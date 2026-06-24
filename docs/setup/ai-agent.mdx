@@ -1,0 +1,55 @@
+---
+sidebar_position: 4
+---
+
+# AI Agent
+
+PUDA works with Cursor, Claude, Hermes, or any AI agent that can access your filesystem and shell. It works best on Linux, where the agent can install the PUDA CLI, inspect project files, run commands, and operate through the same terminal surface that a human would use.
+
+We recommend Hermes because it has a well-built learning loop. It gets better at learning your workflows and patterns the more you use it.
+
+## Install the PUDA CLI
+
+Copy this prompt into your AI agent:
+
+```text
+Install the latest PUDA CLI from https://github.com/pudap/puda/releases/ and add it to my PATH so the puda command is available globally.
+
+After installation, verify that the CLI works by checking the installed puda version.
+```
+
+## Log in
+
+Copy this prompt into your AI agent:
+
+```text
+Log in to PUDA, my username is <username>
+```
+
+## Install PUDA skills
+
+Copy this prompt into your AI agent:
+
+```text
+Install puda skills using the puda cli
+```
+
+## Configure NATS
+
+Copy this prompt into your AI agent, using the server addresses from your [NATS setup](./nats-server)
+
+```text
+Configure PUDA to use these NATS servers:
+
+<paste your NATS server URL or comma-separated NATS cluster URLs here>
+```
+
+## Verify the setup
+
+Copy this prompt into your AI agent:
+
+```text
+List the current available PUDA machines.
+```
+
+Next, configure a [logging service](./logging-service) for persistent command-response storage and backups.

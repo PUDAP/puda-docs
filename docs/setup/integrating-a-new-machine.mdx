@@ -1,0 +1,109 @@
+---
+sidebar_position: 3
+---
+
+# Integrating a New Machine
+
+Each machine in PUDA runs an edge service. The edge service wraps the machine's hardware API, connects to NATS, and exposes machine commands to the rest of the PUDA system.
+
+Start by cloning the Python edge template:
+
+```bash
+git clone https://github.com/PUDAP/edge-python-template.git
+cd edge-python-template
+```
+
+Then follow the instructions in the [edge-python-template README](https://github.com/PUDAP/edge-python-template).
+
+## Driver class
+
+The main integration point is the `driver.py` class. This class should be a thin wrapper around the hardware code for your machine.
+
+All public methods on the driver class are exposed as machine commands. The edge service writes the command metadata to the NATS [key-value store](https://docs.nats.io/nats-concepts/jetstream/key-value-store), and the PUDA CLI reads that metadata when you run:
+
+```bash
+puda machine commands <machine_id>
+```
+
+This means the driver method names, docstrings, parameters, and return annotations become part of the command interface that users and agents see.
+
+## Driver rules
+
+When writing the driver class:
+
+- Add docstrings for every public method.
+- Document each parameter and return object in the docstring.
+- Keep commands atomic, with each method performing one clear machine action.
+- Use only primitive objects in method parameters, such as `str`, `int`, `float`, `bool`, and simple lists or dictionaries of primitives.
+- Avoid exposing low-level helper methods as public methods. Use private methods for internal helpers.
+- Raise clear, verbose errors when a command fails so the PUDA CLI, logs, and agents can understand what happened.
+- Define the default lifecycle commands: `shutdown`, `home`, and `reset`.
+
+These are standard good programming practices. In PUDA, they also become useful context for AI agents because the command names, docstrings, types, and errors describe what the machine can do and how failures should be interpreted.
+
+## Default commands
+
+Every driver should define these default commands:
+
+```python title="driver.py"
+class Driver:
+    def shutdown(self) -> bool:
+        """
+        Shutdown the machine. Releases all resources and connections to the machine.
+
+        Returns:
+            bool: True if the shutdown was successful, False otherwise
+        """
+        return True
+
+    def home(self) -> bool:
+        """
+        Homes the machine. Used by PUDA CLI `puda machine home <machine_id>`.
+
+        Returns:
+            bool: True if the home was successful, False otherwise
+        """
+        return True
+
+    def reset(self) -> bool:
+        """
+        Software reset the machine. Used by PUDA CLI `puda machine reset <machine_id>`.
+
+        Returns:
+            bool: True if the reset was successful, False otherwise
+        """
+        return True
+```
+
+## Command design
+
+Prefer small commands that map to a single hardware action. Avoid commands that combine unrelated work, hide required inputs, or require complex objects that cannot be represented cleanly in the command metadata.
+
+When a hardware operation fails, include the command, target values, and hardware response in the error message.
+
+```python title="driver.py"
+def move_to(self, x_mm: float, y_mm: float, z_mm: float) -> bool:
+    """
+    Move the machine head to an absolute position.
+
+    Args:
+        x_mm: Target X position in millimeters.
+        y_mm: Target Y position in millimeters.
+        z_mm: Target Z position in millimeters.
+
+    Returns:
+        bool: True if the move was accepted, False otherwise.
+
+    Raises:
+        RuntimeError: If the hardware rejects the move command.
+    """
+    result = self._hardware.move_to(x_mm=x_mm, y_mm=y_mm, z_mm=z_mm)
+    if not result.ok:
+        raise RuntimeError(
+            "Failed to move machine head "
+            f"to x={x_mm}, y={y_mm}, z={z_mm}: {result.error}"
+        )
+    return True
+```
+
+Once this is done, you can [set up your preferred AI agent](./ai-agent) to command your PUDA-integrated machines.
