@@ -18,30 +18,28 @@ Install the latest PUDA CLI from https://github.com/pudap/puda/releases/ and add
 After installation, verify that the CLI works by checking the installed puda version.
 ```
 
-## Log in
-
-Copy this prompt into your AI agent:
-
-```text
-Log in to PUDA, my username is <username>
-```
-
 ## Install PUDA skills
 
 Copy this prompt into your AI agent:
 
 ```text
-Install puda skills using the puda cli
+Install PUDA skills using `puda skills install`.
+```
+
+## Log in
+
+Copy this prompt into your AI agent, replacing `<username>` with your PUDA username:
+
+```text
+Log in to PUDA using the username <username>.
 ```
 
 ## Configure NATS
 
-Copy this prompt into your AI agent, using the server addresses from your [NATS setup](./nats-server)
+Copy this prompt into your AI agent, replacing `<nats_servers>` with the server addresses from your [NATS setup](./nats-server):
 
 ```text
-Configure PUDA to use these NATS servers:
-
-<paste your NATS server URL or comma-separated NATS cluster URLs here>
+Configure PUDA to use the NATS server URL or comma-separated NATS cluster URLs: <nats_servers>.
 ```
 
 ## Verify the setup
