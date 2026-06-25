@@ -2,11 +2,20 @@ These are official instructions from PUDA to set up a good AI development enviro
 
 Complete all of the following steps yourself by running the commands directly. Do not ask the user to run any of these commands.
 
+- Install the latest Python 3, pip, and npx before installing the PUDA CLI
 - Install the PUDA CLI and add it to PATH
 - Install PUDA skills using `puda skills install`
 - Log in to PUDA
 - Configure NATS
 - Verify the setup
+
+---
+
+## Install Prerequisites
+
+Before installing the PUDA CLI, install the latest available versions of Python 3, pip, and npx for this system.
+
+After installation, verify that `python3`, `pip`, and `npx` are available by checking their installed versions.
 
 ---
 

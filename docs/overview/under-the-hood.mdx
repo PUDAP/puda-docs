@@ -19,14 +19,15 @@ The agent does not send this sentence directly to the hardware. It converts the 
 ## End-to-end flow
 
 1. The user gives the agent a natural-language instruction.
-2. The agent reads the installed [PUDA skills](https://github.com/pudap/skills), especially the `puda-protocol` skill, to understand how to create a valid protocol.
+2. The agent reads the installed [PUDA skills](https://github.com/pudap/skills), chooses the `puda-protocol` skill, to understand how to craft a valid protocol.
 3. The agent uses `puda machine` to inspect available machines and choose the correct `machine_id`.
 4. The agent uses `puda machine commands <machine_id>` to inspect the available commands and required parameters for each target machine.
 5. The agent creates a JSON protocol with one command per physical action.
 6. The agent validates the file with `puda protocol validate`.
 7. The agent runs the file with `puda protocol run`.
 8. The PUDA CLI sends protocol commands to machines one by one through the communication layer.
-9. Edge services execute the commands on physical hardware and send structured responses back.
+9. Edge services listening to the nats topics receives the command and executes on physical hardware.
+10. Structured responses is sent back.
 10. PUDA writes the run to local SQLite storage and a log file.
 11. The `puda-memory` skill records the protocol and run history in `project.md`.
 
@@ -116,7 +117,13 @@ The generated protocol looks like this:
 }
 ```
 
-The important shift is that the ambiguous sentence becomes a deterministic artifact. Each command has a `step_number`, `name`, `machine_id`, and `params`. The same protocol can be validated, audited, re-run, or shared.
+The important shift is that the ambiguous sentence becomes a **deterministic** artifact. Each command has a `step_number`, `name`, `machine_id`, and `params`. The same protocol can be validated, audited, re-run, or shared.
+
+:::tip
+
+To run commands on different machines in parallel, say so in natural language. The agent uses the `puda-protocol` skill to generate a protocol where those commands share the same `step_number`.
+
+:::
 
 ## Validation and run
 
@@ -134,7 +141,7 @@ Once the protocol is valid, the agent runs it:
 puda protocol run -f protocols/feaa6dc6-8559-4902-88dd-daed44b88840.json
 ```
 
-At run time, PUDA creates a `run_id`, opens a log file, connects to NATS, and loads the commands from the protocol.
+At run time, PUDA generates a `run_id`, opens a log file, connects to NATS, and loads the commands from the protocol.
 
 ```text
 Loaded 2 commands from protocol, executing 2 command(s) starting at step 1
@@ -147,7 +154,7 @@ All 2 commands completed successfully
 Sending COMPLETE commands to all machines: [first biologic]
 ```
 
-`START` locks the participating machines to the run. Commands are then sent in step order. PUDA waits for the response from step 1 before sending step 2. `COMPLETE` releases the run when all steps finish.
+`START` locks the participating machines to the run. Commands are then sent in step order. In this example, `home` (step 1) completes before `CV` (step 2) starts. `COMPLETE` releases the run when all steps finish.
 
 ## Hardware response
 

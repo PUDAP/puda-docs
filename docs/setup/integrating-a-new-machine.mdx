@@ -17,7 +17,7 @@ Then follow the instructions in the [edge-python-template README](https://github
 
 ## Driver class
 
-The main integration point is the `driver.py` class. This class should be a thin wrapper around the hardware code for your machine.
+The main integration point is the `driver.py` class. This class should be a thin wrapper around the hardware code for your machine. If you already have example code for each command, an AI coding agent can usually turn that into a quick `driver.py` for you.
 
 All public methods on the driver class are exposed as machine commands. The edge service writes the command metadata to the NATS [key-value store](https://docs.nats.io/nats-concepts/jetstream/key-value-store), and the PUDA CLI reads that metadata when you run:
 
@@ -105,5 +105,86 @@ def move_to(self, x_mm: float, y_mm: float, z_mm: float) -> bool:
         )
     return True
 ```
+
+## Configure the edge service
+
+After the driver commands work, edit `main.py` so the edge service loads the machine-specific environment variables, passes them into the driver, and publishes useful telemetry.
+
+Keep `MACHINE_ID` and `NATS_SERVERS` in `.env`, then add the variables your hardware needs:
+
+```bash title=".env"
+MACHINE_ID=my-machine
+NATS_SERVERS=nats://<nats-server-ip>:4222
+
+MY_MACHINE_HOST=192.168.1.50
+MY_MACHINE_PORT=4000
+```
+
+Add matching fields to the `Config` class in `main.py`. Use descriptive names and types so missing or invalid configuration fails at startup instead of during a command:
+
+```python title="main.py"
+class Config(BaseSettings):
+    machine_id: str
+    nats_servers: str
+    my_machine_host: str
+    my_machine_port: int = 4000
+
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parent / ".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+
+    @property
+    def nats_server_list(self) -> list[str]:
+        return [s.strip() for s in self.nats_servers.split(",") if s.strip()]
+```
+
+Then instantiate the driver from that config:
+
+```python title="main.py"
+driver = Driver(
+    host=config.my_machine_host,
+    port=config.my_machine_port,
+)
+```
+
+The telemetry handler should publish at least heartbeat, position, health, and state. Position should describe the current physical coordinates. State should describe what the machine is doing and include the active `run_id` if the hardware or edge service tracks one.
+
+```python title="main.py"
+async def telemetry_handler():
+    await edge_nats_client.publish_heartbeat()
+
+    await edge_nats_client.publish_position({
+        "x_mm": driver.position.x_mm,
+        "y_mm": driver.position.y_mm,
+        "z_mm": driver.position.z_mm,
+    })
+
+    await edge_nats_client.publish_health({
+        "connected": driver.is_connected(),
+        "error": driver.last_error,
+        "temperature_c": driver.temperature_c(),
+    })
+
+
+def state_handler():
+    return {
+        "state": driver.state,
+        "run_id": driver.active_run_id,
+        "homed": driver.is_homed(),
+        "busy": driver.is_busy(),
+    }
+
+
+runner = EdgeRunner(
+    nats_client=edge_nats_client,
+    machine_driver=driver,
+    telemetry_handler=telemetry_handler,
+    state_handler=state_handler,
+)
+```
+
+Adapt the field names to your machine. For a robot arm, position might include joints and tool pose. For a pump, position might be plunger position, valve position, and current flow rate. For a camera, it might be stage position, focus, exposure, and acquisition state. The important rule is that telemetry should be JSON-serializable, stable over time, and useful to agents, dashboards, and loggers watching subjects such as `puda.<machine_id>.tlm.pos`, `puda.<machine_id>.tlm.health`, and `puda.<machine_id>.tlm.status`.
 
 Once this is done, you can [set up your preferred AI agent](./ai-agent) to command your PUDA-integrated machines.
