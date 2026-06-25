@@ -95,25 +95,25 @@ const config: Config = {
           title: 'Docs',
           items: [
             {
-              label: 'Tutorial',
+              label: 'Getting Started',
               to: '/docs/getting-started',
+            },
+            {
+              label: 'Overview',
+              to: '/docs/category/overview',
+            },
+            {
+              label: 'Setup',
+              to: '/docs/category/setup',
             },
           ],
         },
         {
-          title: 'Community',
+          title: 'Links',
           items: [
             {
-              label: 'Stack Overflow',
-              href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-            },
-            {
-              label: 'Discord',
-              href: 'https://discordapp.com/invite/docusaurus',
-            },
-            {
-              label: 'X',
-              href: 'https://x.com/docusaurus',
+              label: 'PUDA',
+              href: 'https://puda.co',
             },
           ],
         },

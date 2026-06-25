@@ -3,8 +3,7 @@ These are official instructions from PUDA to set up a good AI development enviro
 Complete all of the following steps yourself by running the commands directly. Do not ask the user to run any of these commands.
 
 - Install the PUDA CLI and add it to PATH
-- Install PUDA skills using the PUDA CLI
-- Ask the user for their PUDA username and NATS server addresses
+- Install PUDA skills using `puda skills install`
 - Log in to PUDA
 - Configure NATS
 - Verify the setup
@@ -25,24 +24,15 @@ Install PUDA skills using `puda skills install`.
 
 ---
 
-## Ask for Setup Details
-
-Ask the user for both of the following values:
-
-- PUDA username
-- NATS server URL or comma-separated NATS cluster URLs
-
----
-
 ## Log in
 
-Log in to PUDA using the PUDA username provided by the user.
+Log in to PUDA using the username <username>.
 
 ---
 
 ## Configure NATS
 
-Configure PUDA to use the NATS server URL or comma-separated NATS cluster URLs provided by the user.
+Configure PUDA to use the NATS server URL or comma-separated NATS cluster URLs: <nats_servers>.
 
 ---
 
