@@ -1,4 +1,6 @@
-# Website
+# puda-docs
+
+View the docs at [docs.puda.co](https://docs.puda.co).
 
 This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
 
