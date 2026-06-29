@@ -1,0 +1,167 @@
+---
+sidebar_position: 1
+---
+
+# Machine Skills
+
+A machine skill teaches an agent how to choose, inspect, and operate a PUDA-connected machine. It should capture what the machine is for, when to use it, which commands to inspect before action, and the rules the agent must follow to operate safely.
+
+Use [PUDAP/bears-skills](https://github.com/PUDAP/bears-skills) as a reference. The [BEARS machines skill](https://github.com/PUDAP/bears-skills/blob/main/bears-machines/SKILL.md) is a good model because it explains how to select the right machine, when to ask the user instead of guessing, and which machine-specific reference to load before generating commands.
+
+## When to create a machine skill
+
+Create a machine skill when:
+
+- A machine exposes PUDA commands that an agent may use repeatedly.
+- The machine has physical limits, startup requirements, shutdown requirements, or unsafe actions.
+- The agent needs help deciding when this machine is the right tool for a task.
+- The machine needs a separate reference file for detailed command parameters, sequencing, or labware constraints.
+
+## Start with the skill metadata
+
+A machine skill should begin with front matter that names the skill and describes when an agent should use it:
+
+```md
+---
+name: my-machine
+description: Use when you need to operate, inspect, or generate PUDA commands for <machine_name>.
+---
+```
+
+Keep the description practical. It should tell the agent when to load the skill, not just what the machine is called.
+
+## Define the goal
+
+State what the skill helps the agent do. For a machine-selection skill like BEARS, the goal is to choose the correct machine and load the correct reference before generating commands.
+
+```md
+## Goal
+
+Help the agent select the right PUDA machine for the user's task, inspect the available commands, and follow machine-specific constraints before generating or running commands.
+```
+
+## Add a critical rule
+
+Physical systems need conservative defaults. If the agent cannot choose a machine or command confidently, the skill should tell it to ask the user.
+
+```md
+## Critical Rule
+
+If you are unsure which machine, deck slot, serial port, calibration, or command parameter should be used, ask the user before proceeding. Do not assume.
+```
+
+This is one of the most important patterns in the BEARS machine skill: ambiguous physical actions should stop at clarification, not improvisation.
+
+## Describe capabilities and when to use the machine
+
+For each machine, include the machine ID, what it is used for, its capabilities, and clear selection rules.
+
+```md
+### Opentrons Machine (`machine_id: "opentrons"`)
+
+Use for automated liquid handling and full protocol generation on the Opentrons OT-2 robot.
+
+Capabilities:
+- Load labware and instruments
+- Pick up and drop tips
+- Aspirate, dispense, transfer, air gap, blow out, and touch tip
+- Generate complete OT-2 Python protocols
+
+Use this machine when:
+- The user mentions Opentrons, OT-2, pipettes, tip racks, well plates, reservoirs, or deck slots
+- The task involves liquid transfer, labware setup, or protocol generation
+```
+
+Write these sections in direct language. The agent should be able to match a user's request to the right machine without guessing.
+
+## Require command inspection
+
+A machine skill should not rely only on memory. Tell the agent to inspect the live PUDA command surface before generating commands:
+
+```md
+Before command generation:
+- Run `puda machine commands <machine_id>` to inspect available commands.
+- Read the machine reference file for parameters, sequencing rules, limits, and examples.
+- Follow the current command interface if it differs from older examples.
+```
+
+If your skill has separate reference files, link them from the machine section:
+
+```md
+Before command generation:
+- Refer to: [opentrons-machine](references/opentrons-machine.md)
+- Run `puda machine commands opentrons`
+- Follow all command types, parameters, sequencing rules, and labware constraints in the reference.
+```
+
+## Add safety and sequencing rules
+
+End the skill with rules that must always be followed. These should be short, specific, and easy to audit.
+
+```md
+## Critical sequencing rules
+
+- Always confirm required user-provided values, such as deck slots, serial ports, calibration files, or sample locations.
+- Always run required startup commands before reading, moving, heating, imaging, or dispensing.
+- Always verify important state after physical actions.
+- Always run required cleanup or shutdown steps when it is safe to do so.
+- If a command fails or verification does not match the expected state, stop and report the command, target state, actual state, and response.
+```
+
+Prefer exact machine-specific rules when possible:
+
+```md
+- `balance` - call `startup()` before reading and `shutdown()` after. Tare before a dispense step. Verify `fresh == True` before using a reading.
+- `opentrons` - never assume deck slots. Confirm every labware location with the user.
+- `robot_arm` - home before motion and never move outside the documented soft limits.
+```
+
+## Use reference files for detail
+
+Keep the top-level machine skill focused on selection, safety, and routing. Put long command notes in `references/<machine-name>.md`, especially when a machine has many commands or examples.
+
+A reference file can include:
+
+- Available commands and parameters
+- Startup and shutdown steps
+- Soft limits and unsafe actions
+- Required user confirmations
+- Known failure modes and recovery steps
+- Example command sequences
+- Notes from real runs
+
+This keeps the machine skill readable while still giving the agent enough detail before it acts.
+
+## Suggested file structure
+
+```text
+my-machine-skill/
+  SKILL.md
+  references/
+    my-machine.md
+```
+
+## Test the skill
+
+Before using a machine skill on real hardware, ask the agent to dry run against the skill:
+
+```text
+Using the <machine_name> machine skill, plan a safe dry run.
+
+List:
+- Which machine you selected and why.
+- Which PUDA commands you would inspect.
+- Which user-provided values you need before continuing.
+- Every command you would run, in order.
+- The expected state after each command.
+- The verification and cleanup steps.
+
+Do not run physical commands yet.
+```
+
+Then run a small real test with conservative parameters and update the skill with anything the dry run missed.
+
+## References
+
+- [BEARS machines skill](https://github.com/PUDAP/bears-skills/blob/main/bears-machines/SKILL.md)
+- [PUDAP/bears-skills repository](https://github.com/PUDAP/bears-skills)

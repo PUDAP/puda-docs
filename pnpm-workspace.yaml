@@ -6,6 +6,8 @@ allowBuilds:
   esbuild: true
   workerd: true
   sharp: true
+  '@swc/core': false
+  core-js: false
 
 packages:
   - '.'
