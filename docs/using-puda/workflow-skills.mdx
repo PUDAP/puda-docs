@@ -55,18 +55,18 @@ A good workflow skill should include:
 - **Command sequence** — exact PUDA commands in order, with parameters.
 - **Verification gates** — checks after important steps, such as position, pressure, or image capture.
 - **Cleanup** — steps that must run even when the workflow fails partway through.
-- **Failure handling** — what to do when a command fails, including when to stop and report.
+- **Failure handling** — optional instructions for what to do when a command fails, including when to stop and report.
 - **Example runs** — one or more complete command sequences the agent can follow.
 
-## Include failure handling
+## Add optional failure handling
 
-Workflow skills should describe both the normal path and the safe stop path. If a command fails, the agent should preserve machine state, report what happened, and avoid guessing the next physical action.
+Workflow skills can describe both the normal path and the safe stop path. If a command fails, the agent can ask the user for approval before retrying. If you do not want the agent to retry, say so explicitly in the workflow skill.
 
 ```text
 Add failure handling to the workflow skill:
 
 - If any move command fails, stop immediately and report the target position, actual position, and command response.
-- If aspiration or dispense fails, do not retry automatically. Report the failure and leave the robot in its current state.
+- If aspiration or dispense fails, ask before retrying. If retries are not allowed, report the failure and leave the robot in its current state.
 - If verification fails, stop the workflow and do not continue to the next step.
 - Always run cleanup steps when it is safe to do so, even after a failure.
 ```
@@ -90,10 +90,12 @@ Update the skill with observations from each run:
 ```text
 Update the <workflow_name> workflow skill with these observations:
 
-- The safe approach path to well B3 requires raising Z to at least 50 mm before any XY move.
-- Position queries can lag by up to 1 second after a move, so wait briefly before verifying position.
-- If the machine reports BUSY, wait and query state again instead of issuing another command.
+- The safe approach path to well B3 for first machine requires raising Z to at least 50 mm before any XY move.
 - The workflow completes reliably with 45 uL instead of 50 uL for this reagent viscosity.
 ```
 
 Keep the skill precise. The goal is for the agent to follow the same reliable procedure every time: check prerequisites, execute in order, verify at the gates, clean up at the end, and stop safely when something goes wrong.
+
+## References
+
+- [opentrons workflow skill example](https://github.com/PUDAP/bears-skills/blob/main/bears-workflows/SKILL.md)
