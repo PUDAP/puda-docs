@@ -11,7 +11,7 @@ This guide sets up a single machine to run the full PUDA stack for an Opentrons 
 - PUDA machine skills
 - the Opentrons OT-2 edge service
 
-Use this deployment when the OT-2 host is also the main operator workstation. For larger lab deployments, run NATS and logging on an always-on server and keep the OT-2 edge service on the machine that can reach the robot.
+Use this all-in-one setup for testing PUDA with a single OT-2. For larger lab deployments, follow the rest of the setup guide for the networked setup: run NATS and logging on an always-on server, and keep the OT-2 edge service on the machine that can reach the robot.
 
 ## What you need
 
@@ -141,16 +141,14 @@ The prompt clones [PUDAP/puda-opentrons](https://github.com/pudap/puda-opentrons
 After the service starts, verify that it registered with PUDA:
 
 ```bash
-puda machine commands opentrons-ot2
+puda machine list
 ```
 
-You should see the OT-2 commands published by the edge service. If the machine is missing, check that the OT-2 edge service can reach both the OT-2 robot and NATS.
+You should see `opentrons-ot2` machine id. If the machine is missing, check that the OT-2 edge service can reach both the OT-2 machine and NATS.
 
 For the general edge service model, see [Integrating a New Machine](./integrating-a-new-machine).
 
 ## Verify the all-in-one setup
-
-Run these checks from the `puda-opentrons` directory:
 
 ```bash
 docker compose ps
