@@ -8,17 +8,21 @@
   text-align: center;
   position: relative;
   overflow: hidden;
-  background-color: #0f0f11;
+  background-color: var(--ifm-background-color);
   background-image:
-    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 230, 0, 0.12) 0%, transparent 70%);
+    radial-gradient(ellipse 80% 50% at 50% -10%, rgba(179, 146, 0, 0.12) 0%, transparent 70%);
 }
 
 .heroBanner::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 60% 40% at 50% 100%, rgba(255, 230, 0, 0.06) 0%, transparent 70%);
+  background: radial-gradient(ellipse 60% 40% at 50% 100%, rgba(179, 146, 0, 0.06) 0%, transparent 70%);
   pointer-events: none;
+}
+
+:global([data-theme='dark']) .heroBanner {
+  background-color: #0f0f11;
 }
 
 @media screen and (max-width: 996px) {
@@ -30,9 +34,13 @@
 .heroTitle {
   font-size: 3rem;
   font-weight: 800;
-  color: #ffffff;
+  color: var(--ifm-heading-color);
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
+}
+
+:global([data-theme='dark']) .heroTitle {
+  color: #ffffff;
 }
 
 @media screen and (max-width: 996px) {
@@ -43,10 +51,14 @@
 
 .heroSubtitle {
   font-size: 1.2rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--ifm-color-emphasis-700);
   max-width: 520px;
   margin: 0 auto 2.5rem;
   line-height: 1.6;
+}
+
+:global([data-theme='dark']) .heroSubtitle {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .buttons {
@@ -58,9 +70,9 @@
 }
 
 .getStartedBtn {
-  background-color: #ffe600;
-  border-color: #ffe600;
-  color: #080908 !important;
+  background-color: var(--ifm-color-primary);
+  border-color: var(--ifm-color-primary);
+  color: #ffffff !important;
   font-weight: 700;
   border-radius: 6px;
   padding: 0.6rem 1.5rem;
@@ -68,9 +80,9 @@
 }
 
 .getStartedBtn:hover {
-  background-color: #e6cf00;
-  border-color: #e6cf00;
-  color: #080908 !important;
+  background-color: var(--ifm-color-primary-dark);
+  border-color: var(--ifm-color-primary-dark);
+  color: #ffffff !important;
   transform: translateY(-1px);
 }
 
