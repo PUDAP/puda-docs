@@ -14,18 +14,29 @@
 
 .heroBtn {
   background-color: transparent;
-  border: 1.5px solid rgba(255, 255, 255, 0.25);
-  color: rgba(255, 255, 255, 0.85) !important;
+  border: 1.5px solid var(--ifm-color-emphasis-300);
+  color: var(--ifm-font-color-base) !important;
   border-radius: 6px;
   padding: 0.6rem 1.5rem;
   transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease, transform 0.1s ease;
 }
 
 .heroBtn:hover {
-  border-color: var(--puda-yellow);
-  color: var(--puda-yellow) !important;
-  background-color: rgba(245, 197, 24, 0.07);
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary) !important;
+  background-color: rgba(179, 146, 0, 0.07);
   transform: translateY(-1px);
+}
+
+:global([data-theme='dark']) .heroBtn {
+  border-color: rgba(255, 255, 255, 0.25);
+  color: rgba(255, 255, 255, 0.85) !important;
+}
+
+:global([data-theme='dark']) .heroBtn:hover {
+  border-color: var(--ifm-color-primary);
+  color: var(--ifm-color-primary) !important;
+  background-color: rgba(179, 146, 0, 0.07);
 }
 
 .hero .copied,
