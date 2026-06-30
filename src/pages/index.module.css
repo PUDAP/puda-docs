@@ -70,9 +70,6 @@
 }
 
 .getStartedBtn {
-  background-color: var(--ifm-color-primary);
-  border-color: var(--ifm-color-primary);
-  color: #ffffff !important;
   font-weight: 700;
   border-radius: 6px;
   padding: 0.6rem 1.5rem;
@@ -80,9 +77,6 @@
 }
 
 .getStartedBtn:hover {
-  background-color: var(--ifm-color-primary-dark);
-  border-color: var(--ifm-color-primary-dark);
-  color: #ffffff !important;
   transform: translateY(-1px);
 }
 

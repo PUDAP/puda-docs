@@ -25,6 +25,10 @@ All public methods on the driver class are exposed as machine commands, allowing
 puda machine commands <machine_id>
 ```
 
+:::caution
+Only methods defined on this driver wrapper class are exposed to PUDA. Keep every machine action you want an AI agent to discover, call, and orchestrate in this class. Methods that live only in lower-level hardware clients or helper classes will not be available as machine commands unless the driver wrapper exposes them.
+:::
+
 This means the driver method names, docstrings, parameters, and return annotations become part of the command interface that users and agents see.
 
 ## Driver rules
