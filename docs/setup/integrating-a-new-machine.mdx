@@ -19,7 +19,7 @@ Then follow the instructions in the `README.md` file.
 
 The main integration point is the `driver.py` class. This class should be a thin wrapper around the hardware code for your machine. If you already have example code for each command, an AI coding agent can usually turn that into a quick `driver.py` for you.
 
-All public methods on the driver class are exposed as machine commands, allowing the AI Agent to access using the PUDA CLI.
+All public methods on the driver class are exposed as machine commands, allowing an AI agent to access them using the PUDA CLI.
 
 ```bash
 puda machine commands <machine_id>
@@ -183,4 +183,4 @@ runner = EdgeRunner(
 
 Adapt the field names to your machine. For a robot arm, position might include joints and tool pose. For a pump, position might be plunger position, valve position, and current flow rate. For a camera, it might be stage position, focus, exposure, and acquisition state. The important rule is that telemetry should be JSON-serializable, stable over time, and useful to agents, dashboards, and loggers watching subjects such as `puda.<machine_id>.tlm.pos`, `puda.<machine_id>.tlm.health`, and `puda.<machine_id>.tlm.status`.
 
-Once this is done, you can [set up your preferred AI agent](./ai-agent) to command your PUDA-integrated machines.
+Once this is done, you can [install the PUDA CLI and skills](./puda-cli-and-skills) in your AI agent so it can command your PUDA-integrated machines.
