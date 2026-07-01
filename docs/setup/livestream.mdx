@@ -4,31 +4,33 @@ sidebar_position: 7
 
 # Livestream
 
-Use this setup when a PUDA machine host has one or more USB cameras or webcams attached and you want live video available over RTSP, RTMP, HLS, or WebRTC.
+Use this setup when a PUDA machine host has one or more USB cameras, webcams, or IP cameras and you want live video available over RTSP, RTMP, HLS, or WebRTC.
 
-This guide assumes:
+This guide assumes Docker Engine and Docker Compose are installed, and that the host can be reached by operators over the same VPN network used for PUDA.
 
-- Docker Engine and Docker Compose are installed.
-- A camera or webcam is plugged into the host.
-- The host can be reached by operators over the same private network or VPN used for PUDA.
+## 1. Find the camera device or IP camera URL
 
-## Find camera devices
-
-On the livestream host, list video devices:
+For local USB cameras or webcams, list the video devices on the livestream host:
 
 ```bash
 ls -l /dev/video*
 ```
 
-If the machine has `v4l-utils` installed, inspect the cameras:
+If `v4l-utils` is installed, inspect the cameras:
 
 ```bash
 v4l2-ctl --list-devices
 ```
 
-Choose the device paths to expose, such as `/dev/video0` and `/dev/video2`.
+Choose the device paths to expose, such as `/dev/video0` or `/dev/video2`.
 
-## Clone the livestream repo
+For IP cameras, find the stream URL from the camera admin UI or vendor docs. RTSP URLs usually look like:
+
+```text
+rtsp://user:pass@192.168.1.50:554/stream1
+```
+
+## 2. Clone the livestream repo
 
 Clone the livestream repo on the machine host:
 
@@ -37,26 +39,34 @@ git clone https://github.com/pudap/livestream.git
 cd livestream
 ```
 
-## Configure the livestream
+## 3. Copy the example environment file
 
-Only the relevant file excerpts are shown below.
+Copy `.env.example` to `.env`:
 
-Set the host address in `.env`. Use an IP or hostname that viewers on your network or VPN can reach — for example a LAN address, VPN address, or public DNS name:
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and set `MTX_WEBRTCADDITIONALHOSTS` to the address operators will use to reach this host, usually the Tailscale IP or DNS name:
 
 ```env title=".env"
-# Host address advertised to clients. Must be reachable from viewer machines.
-HOST_ADDRESS=100.64.0.10
+MTX_WEBRTCADDITIONALHOSTS=100.64.0.10
 ```
 
-Define the cameras in `streams.conf`. Each non-blank, non-comment line defines one stream: the device path on the host and the public stream name, separated by whitespace.
+## 4. Update `streams.conf`
+
+Each non-blank, non-comment line defines one stream: the input and the public stream name, separated by whitespace.
 
 ```conf title="streams.conf"
-# device path    stream name
-/dev/video0      cam0
-/dev/video2      cam1
+/dev/video0 livestream
+rtsp://user:pass@192.168.1.50:554/stream1 ipcam0
 ```
 
-In `compose.yml`, expose the same host video devices to the `ffmpeg` container:
+The input can be a local `/dev/video*` device or an IP camera URL.
+
+## 5. Update `compose.yml` for local cameras
+
+Docker containers do not automatically see host video devices. Each local camera used in `streams.conf` must also be exposed to the `ffmpeg` container with a matching `devices:` entry in `compose.yml`.
 
 ```yaml title="compose.yml"
 services:
@@ -66,9 +76,7 @@ services:
       - /dev/video2:/dev/video2
 ```
 
-The `devices:` entries make the host cameras visible inside the ffmpeg container. Add one line for each local `/dev/video*` camera listed in `streams.conf`, and remove entries for cameras you are not using.
-
-If a port is already in use on the host, change the left-hand side of the matching `ports` entry in `compose.yml`.
+IP camera URLs do not need a Docker device mapping.
 
 To add or remove a camera later, edit `streams.conf`, update the `devices:` entries in `compose.yml`, and run:
 
@@ -76,7 +84,7 @@ To add or remove a camera later, edit `streams.conf`, update the `devices:` entr
 docker compose restart ffmpeg
 ```
 
-## Start the livestream
+## 6. Start the livestream services
 
 ```bash
 docker compose up -d
@@ -88,31 +96,55 @@ Check that both services are running:
 docker compose ps
 ```
 
+## Stream URLs
+
+The livestream will be available on the ports published by `compose.yml`:
+
+```yaml title="compose.yml"
+ports:
+  - "8554:8554" # RTSP
+  - "1935:1935" # RTMP
+  - "8888:8888" # HLS
+  - "8889:8889" # WebRTC HTTP/WHIP/WHEP
+  - "8189:8189/udp" # WebRTC ICE/UDP
+  - "8189:8189/tcp" # WebRTC ICE/TCP
+```
+
+Video feeds can be accessed at these URLs. For each stream name in `streams.conf`, replace `STREAM_NAME` and use the host from `MTX_WEBRTCADDITIONALHOSTS` in `.env`:
+
+| Protocol | URL |
+| --- | --- |
+| RTSP | `rtsp://MTX_WEBRTCADDITIONALHOSTS:8554/STREAM_NAME` |
+| RTMP | `rtmp://MTX_WEBRTCADDITIONALHOSTS:1935/STREAM_NAME` |
+| HLS | `http://MTX_WEBRTCADDITIONALHOSTS:8888/STREAM_NAME/` |
+| WebRTC | `http://MTX_WEBRTCADDITIONALHOSTS:8889/STREAM_NAME/` |
+
+With the example `streams.conf`, `livestream` is available at those URLs.
+
+## 7. Tell the AI agent about the machine livestream
+
+After the stream is reachable, tell the AI agent which PUDA machine the livestream belongs to and provide both the RTSP stream and an HTTP stream. Use the machine ID from PUDA and the stream name from `streams.conf`.
+
+```text
+You have access to the livestream for machine <machine_id>.
+
+<urls here>
+
+Use these URLs when you need to fetch frames or inspect the machine state in Python code.
+```
+
+## Troubleshooting
+
 View logs if a stream does not appear:
 
 ```bash
 docker compose logs -f mediamtx ffmpeg
 ```
 
-## Stream URLs
-
-For each stream name in `streams.conf`, replace `STREAM_NAME` and `100.64.0.10` with your stream name and the `HOST_ADDRESS` from `.env`:
-
-| Protocol | URL |
-| --- | --- |
-| RTSP | `rtsp://100.64.0.10:8554/STREAM_NAME` |
-| RTMP | `rtmp://100.64.0.10:1935/STREAM_NAME` |
-| HLS | `http://100.64.0.10:8888/STREAM_NAME/` |
-| WebRTC | `http://100.64.0.10:8889/STREAM_NAME/` |
-
-With the example `streams.conf`, `cam0` and `cam1` are available at those URLs.
-
-## Verify with ffprobe
-
 From another machine that can reach the livestream host, verify a stream:
 
 ```bash
-ffprobe rtsp://100.64.0.10:8554/cam0
+ffprobe rtsp://MTX_WEBRTCADDITIONALHOSTS:8554/livestream
 ```
 
 For browser viewing, open the HLS or WebRTC URL.
