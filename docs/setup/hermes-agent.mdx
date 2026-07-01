@@ -31,6 +31,24 @@ Watch this video to install Hermes and connect it to Telegram. You can also foll
 
 ## Telegram Group Privacy Mode
 
-If you connect Hermes to a Telegram group, configure Telegram group privacy mode so Hermes can receive the messages it needs. Follow the [Hermes Telegram messaging guide](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/messaging/telegram.md).
+If you connect Hermes to a Telegram group, configure Telegram group privacy mode so Hermes can receive the messages it needs.
+
+In your WSL terminal or Linux terminal, open the Hermes config:
+
+```bash
+cd ~/.hermes
+nano config.yaml
+```
+
+Copy the following configuration into `config.yaml`:
+
+```yaml
+telegram:
+  group_allowed_chats:
+    - "-1001234567890"
+  require_mention: true
+```
+
+Replace `-1001234567890` with your own Telegram group chat ID.
 
 Next, [install the PUDA CLI and skills](./puda-cli-and-skills) on your machine so Hermes can start using PUDA.
