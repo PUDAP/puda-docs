@@ -63,28 +63,104 @@ Then verify uv:
 uv --version
 ```
 
-Install and configure Hermes or your preferred AI agent before continuing. The agent must be able to run shell commands, edit files, and use the PUDA CLI.
+## Install AI Agent
+
+Install Hermes or your preferred AI agent before continuing. Skip this if you already have an AI agent that can access the filesystem and shell. Otherwise, install Hermes Agent and connect it to Telegram. See [Hermes Agent](./hermes-agent).
+
+The agent must be able to run shell commands, edit files, and use the PUDA CLI.
 
 ## Copy the setup prompt
 
-After the dependencies are installed, copy this prompt into Hermes or your preferred AI agent. The agent should ask for your PUDA user ID and OT-2 IP address before running commands.
+After the dependencies are installed, copy this prompt into the AI agent. The agent should ask for your PUDA user ID, OT-2 IP address, and workspace directory before running commands.
 
-````text
+````text title="Copy this prompt into your AI agent"
 Set up this machine as a PUDA all-in-one host for an Opentrons OT-2.
 
 Before running setup commands, ask me for:
 - my PUDA user ID
 - the Opentrons OT-2 IP address
+- my workspace directory (use `~/puda` if I do not provide one)
 
 Use the values I provide for every command or configuration file that needs them.
 
-First verify that these dependencies are installed and available:
+## Step 1: Verify dependencies
+
+Verify that these dependencies are installed and available:
 - docker
 - docker compose
 - python3
 - uv
 
 If any dependency is missing, stop and tell me what to install before continuing.
+
+## Step 2: Set up NATS
+
+Set up and start a local NATS server in `<workspace>/puda-nats`:
+
+```bash
+mkdir -p <workspace>/puda-nats
+cd <workspace>/puda-nats
+```
+
+Create `compose.yml`:
+
+```yaml
+services:
+  nats:
+    image: nats:2.12.2
+    container_name: nats
+    restart: always
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+      - "1883:1883"
+    volumes:
+      - nats:/data
+      - ./nats.conf:/etc/nats/nats.conf:ro
+    command: "-c /etc/nats/nats.conf"
+
+volumes:
+  nats:
+```
+
+Create `nats.conf`:
+
+```conf
+# Client connection port
+port: 4222
+
+# HTTP monitoring port
+http_port: 8222
+
+# mqtt config
+mqtt {
+  port: 1883
+}
+
+# Max payload size for messages
+max_payload: 64MB
+
+# JETSTREAM CONFIGURATION
+# https://docs.nats.io/running-a-nats-service/configuration/resource_management
+jetstream {
+    store_dir: "/data/jetstream"
+    max_mem: 4G
+    max_file: 10G
+
+    request_queue_limit: 1000
+    limits {
+      max_ha_assets = 2000
+    }
+}
+```
+
+Start NATS:
+
+```bash
+docker compose up -d
+```
+
+## Step 3: Install the PUDA CLI
 
 Install the latest PUDA CLI from https://github.com/pudap/puda/releases/ and add it to my PATH so the `puda` command is available globally.
 
@@ -99,19 +175,20 @@ puda login --user <username>
 Install the OT-2 PUDA skill:
 
 ```bash
-puda skills install puda-opentrons-skill
+puda skills install PUDAP/opentrons-skills
 ```
 
-Clone and start the OT-2 edge service:
+## Step 4: Set up the OT-2 edge service
+
+Clone and configure the OT-2 edge service in `<workspace>`:
 
 ```bash
-mkdir -p ~/puda-ot2
-cd ~/puda-ot2
+cd <workspace>
 git clone https://github.com/pudap/puda-opentrons
 cd puda-opentrons
 ```
 
-Configure the edge service with the local NATS server and the OT-2 IP address I provided. If the repository has an `.env.example`, copy it to `.env`; otherwise create the expected environment file for this project. Set the OT-2 host/IP value to the IP address I provided.
+Copy `.env.example` to `.env` and configure the edge service with `nats://localhost:4222` and the OT-2 IP address I provided.
 
 Start the service dependencies:
 
@@ -128,34 +205,12 @@ uv run edge/main.py
 After the service starts, verify that it registered with PUDA:
 
 ```bash
-puda machine commands opentrons-ot2
+puda machine list
 ```
 
 If the machine is missing, check that Docker services are running and that the OT-2 edge service can reach both the OT-2 robot and NATS.
 ````
 
-## Start the OT-2 edge service
-
-The prompt clones [PUDAP/puda-opentrons](https://github.com/pudap/puda-opentrons), starts its Docker services, and runs the edge service with `uv run edge/main.py`.
-
-After the service starts, verify that it registered with PUDA:
-
-```bash
-puda machine list
-```
-
-You should see `opentrons-ot2` machine id. If the machine is missing, check that the OT-2 edge service can reach both the OT-2 machine and NATS.
-
-For the general edge service model, see [Integrating a New Machine](./integrating-a-new-machine).
-
-## Verify the all-in-one setup
-
-```bash
-docker compose ps
-puda machine commands opentrons-ot2
-puda machine home opentrons-ot2
-```
-
-If `puda machine home opentrons-ot2` succeeds, the all-in-one stack is working: NATS is running, the OT-2 edge service is connected, and the PUDA CLI can command the machine.
-
 ## Using opentrons with PUDA
+
+From here, use [Using PUDA](../using-puda) to run protocols, build repeatable OT-2 workflows, and more.
