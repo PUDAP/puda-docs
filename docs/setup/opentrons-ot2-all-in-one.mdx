@@ -73,6 +73,8 @@ The agent must be able to run shell commands, edit files, and use the PUDA CLI.
 
 After the dependencies are installed, copy this prompt into the AI agent. The agent should ask for your PUDA user ID, OT-2 IP address, and workspace directory before running commands.
 
+This will install and run the NATS Server, PUDA CLI, default puda skills and [opentrons-skills](https://github.com/PUDAP/opentrons-skills), as well as the edge service for opentrons.
+
 ````text title="Copy this prompt into your AI agent"
 Set up this machine as a PUDA all-in-one host for an Opentrons OT-2.
 
@@ -213,4 +215,4 @@ If the machine is missing, check that Docker services are running and that the O
 
 ## Using opentrons with PUDA
 
-From here, use [Using PUDA](../using-puda) to run protocols, build repeatable OT-2 workflows, and more.
+From here, use [Using PUDA](../category/using-puda) to run protocols, build repeatable OT-2 workflows, and more.
