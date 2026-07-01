@@ -6,24 +6,28 @@ sidebar_position: 3
 
 Each machine in PUDA runs an edge service. The edge service wraps the machine's hardware API, connects to NATS, and exposes machine commands to the rest of the PUDA system.
 
-Start by cloning the Python edge template:
+Start by creating a new repository from the [puda-python-edge](https://github.com/PUDAP/puda-python-edge) template. Do not clone the template repository directly. Name your new repository `puda-<machine_id>-edge`, replacing `<machine_id>` with your machine ID.
 
 ```bash
-git clone https://github.com/PUDAP/edge-python-template.git
-cd edge-python-template
+git clone https://github.com/<your-org>/puda-<machine_id>-edge.git
+cd puda-<machine_id>-edge
 ```
 
-Then follow the instructions in the [edge-python-template README](https://github.com/PUDAP/edge-python-template).
+Then follow the instructions in the `README.md` file.
 
 ## Driver class
 
 The main integration point is the `driver.py` class. This class should be a thin wrapper around the hardware code for your machine. If you already have example code for each command, an AI coding agent can usually turn that into a quick `driver.py` for you.
 
-All public methods on the driver class are exposed as machine commands. The edge service writes the command metadata to the NATS [key-value store](https://docs.nats.io/nats-concepts/jetstream/key-value-store), and the PUDA CLI reads that metadata when you run:
+All public methods on the driver class are exposed as machine commands, allowing an AI agent to access them using the PUDA CLI.
 
 ```bash
 puda machine commands <machine_id>
 ```
+
+:::caution
+Only methods defined on this driver wrapper class are exposed to PUDA. Keep every machine action you want an AI agent to discover, call, and orchestrate in this class. Methods that live only in lower-level hardware clients or helper classes will not be available as machine commands unless the driver wrapper exposes them.
+:::
 
 This means the driver method names, docstrings, parameters, and return annotations become part of the command interface that users and agents see.
 
@@ -116,6 +120,7 @@ Keep `MACHINE_ID` and `NATS_SERVERS` in `.env`, then add the variables your hard
 MACHINE_ID=my-machine
 NATS_SERVERS=nats://<nats-server-ip>:4222
 
+# Add variables as needed
 MY_MACHINE_HOST=192.168.1.50
 MY_MACHINE_PORT=4000
 ```
@@ -149,21 +154,16 @@ driver = Driver(
 )
 ```
 
-The telemetry handler should publish at least heartbeat, position, health, and state. Position should describe the current physical coordinates. State should describe what the machine is doing and include the active `run_id` if the hardware or edge service tracks one.
+The telemetry handler should publish at least heartbeat, optional position, health, and state.
 
 ```python title="main.py"
 async def telemetry_handler():
     await edge_nats_client.publish_heartbeat()
 
-    await edge_nats_client.publish_position({
-        "x_mm": driver.position.x_mm,
-        "y_mm": driver.position.y_mm,
-        "z_mm": driver.position.z_mm,
-    })
+    await edge_nats_client.publish_position(driver.get_position())
 
     await edge_nats_client.publish_health({
         "connected": driver.is_connected(),
-        "error": driver.last_error,
         "temperature_c": driver.temperature_c(),
     })
 
@@ -187,4 +187,4 @@ runner = EdgeRunner(
 
 Adapt the field names to your machine. For a robot arm, position might include joints and tool pose. For a pump, position might be plunger position, valve position, and current flow rate. For a camera, it might be stage position, focus, exposure, and acquisition state. The important rule is that telemetry should be JSON-serializable, stable over time, and useful to agents, dashboards, and loggers watching subjects such as `puda.<machine_id>.tlm.pos`, `puda.<machine_id>.tlm.health`, and `puda.<machine_id>.tlm.status`.
 
-Once this is done, you can [set up your preferred AI agent](./ai-agent) to command your PUDA-integrated machines.
+Once this is done, you can [install the PUDA CLI and skills](./puda-cli-and-skills) in your AI agent so it can command your PUDA-integrated machines.
