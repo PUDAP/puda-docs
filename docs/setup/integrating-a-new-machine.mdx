@@ -81,7 +81,7 @@ class Driver:
 
 ## Command design
 
-Prefer small commands that map to a single hardware action. Avoid commands that combine unrelated work, hide required inputs, or require complex objects that cannot be represented cleanly in the command metadata.
+Prefer atomic commands that map to a single hardware action. Avoid commands that combine unrelated work, hide required inputs, or require complex objects that cannot be represented cleanly in the [protocol file](https://docs.puda.co/docs/overview/under-the-hood#protocol-generation).
 
 When a hardware operation fails, include the command, target values, and hardware response in the error message.
 

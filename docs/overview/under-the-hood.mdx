@@ -244,4 +244,6 @@ After the protocol is created or run, the `puda-memory` skill updates `project.m
 - 2026-03-31T09:00:43Z ran [feaa6dc6-8559-4902-88dd-daed44b88840](protocols/feaa6dc6-8559-4902-88dd-daed44b88840.json) - logs: [d7a1990a-6847-42e1-8aac-06cac89fbaf8](logs/d7a1990a-6847-42e1-8aac-06cac89fbaf8.log)
 ```
 
+Optionally, a separate [PUDA logger](../observability/logging-service) can be configured to store everything on a central [InfluxDB](https://www.influxdata.com/) database.
+
 This makes the natural-language request reproducible. The original instruction, generated protocol, physical execution, hardware response, and project memory are all connected by IDs and files.
