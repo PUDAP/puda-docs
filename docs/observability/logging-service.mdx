@@ -43,10 +43,23 @@ Create an admin token file for InfluxDB:
 echo '{"token": "<token>", "name": "<name>", "description": "Preconfigured admin token for influxdb-logger"}' > admin-token.json
 ```
 
-Copy the server environment file and start InfluxDB:
+Copy the server environment file:
 
 ```bash
 cp .env.example .env
+```
+
+Edit `.env` and set `INFLUXDB_TOKEN` to the same token value from `admin-token.json`. Change `INFLUXDB_PORT` only if port `8181` is already in use on this host:
+
+```env title=".env"
+INFLUXDB_PORT=8181
+INFLUXDB3_NODE_IDENTIFIER_PREFIX=puda
+INFLUXDB_TOKEN=<token>
+```
+
+Start InfluxDB:
+
+```bash
 docker compose up -d
 ```
 
