@@ -101,7 +101,7 @@ Tool call `status` values are `ok`, `error`, `blocked`, or `cancelled`. Approval
 
 ## Verify logging
 
-Start or restart Hermes with the plugin enabled, then send a prompt that triggers a tool call. In Grafana **Explore** (see [Grafana Observability](./grafana-observability)), query the Hermes database:
+Start or restart Hermes with the plugin enabled, then send a prompt that triggers a tool call. In Grafana **Explore** (see [Grafana Dashboard](./grafana-dashboard)), query the Hermes database:
 
 ```sql
 SELECT time, session_id, user_message
@@ -160,4 +160,4 @@ ORDER BY time DESC
 
 ## Next step
 
-Add [Grafana](./grafana-observability) dashboards and alerts on top of both PUDA machine data and Hermes agent telemetry. Point a second InfluxDB data source at the `hermes-logs` database, or add Hermes panels to an existing dashboard.
+Add [Grafana](./grafana-dashboard) dashboards and alerts on top of both PUDA machine data and Hermes agent telemetry. Point a second InfluxDB data source at the `hermes-logs` database, or add Hermes panels to an existing dashboard.
