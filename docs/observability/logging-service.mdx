@@ -2,13 +2,13 @@
 sidebar_position: 1
 ---
 
-# Logging Service
+# PUDA Logger
 
 By default, the PUDA CLI uses SQLite for local storage. This is enough for a local workstation, quick experiments, and single-user development.
 
-For backups, persistent storage, and a more reliable record of the whole runtime environment, run a dedicated logging service. This service should run 24/7 on an always-on machine, preferably in a Docker container managed by Docker Compose.
+For backups, persistent storage, and a more reliable record of the whole runtime environment, run the PUDA logger. It should run 24/7 on an always-on machine, in a Docker container.
 
-The recommended template is [PUDAP/puda-logger](https://github.com/PUDAP/puda-logger). It listens to PUDA streams from NATS and writes command responses, telemetry, events, alerts, and other subjects described in the [communication layer](../overview/communication) to a central database.
+The recommended template is [PUDAP/puda-logger](https://github.com/PUDAP/puda-logger). It uses Telegraf to stream PUDA command and health telemetry from NATS into a central database.
 
 The template includes two database backends. Both use the same NATS subscription pattern; choose the one that matches how you query your logs.
 
@@ -75,35 +75,46 @@ cd puda-logger/influxdb/logger
 cp .env.example .env
 ```
 
-Set `NATS_SERVERS` to the same NATS addresses used by your PUDA CLI and edge services. Set `INFLUXDB_URL` to the InfluxDB host the logger can reach—use `http://localhost:8181` when the server runs on the same machine, or `http://<influxdb-host>:8181` when it runs elsewhere:
+Edit `.env` and point the logger at your InfluxDB server and NATS broker. Use the same `INFLUXDB_TOKEN` from [Start InfluxDB](#start-influxdb). Set `NATS_SERVERS` to the NATS URL(s) the logger can reach—for example, `nats://<nats-host>:4222`:
 
 ```env title=".env"
-NATS_SERVERS=nats://nats1:4222,nats://nats2:4222,nats://nats3:4222
 INFLUXDB_URL=http://<influxdb-host>:8181
 INFLUXDB_TOKEN=<token>
-INFLUXDB_DATABASE=<database_name>
+INFLUXDB_DATABASE=puda
+INFLUXDB_ORGANIZATION=bears
+NATS_SERVERS=nats://<nats-host>:4222
 ```
 
-Start the logger as a Docker container:
+Start the logger with Docker Compose. Use `--build` on the first run, or after Dockerfile or entrypoint changes:
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-The logger restarts automatically unless stopped.
+The `nats-stream-init` service creates the JetStream response streams, then starts the Telegraf-based `influxdb-logger` container. The logger restarts automatically unless stopped.
+
+If you change `telegraf.conf.template`, restart without rebuilding:
+
+```bash
+docker compose restart influxdb-logger
+```
+
+To run without Docker, export the same variables and run `./docker-entrypoint.sh` from `influxdb/logger`. This requires `telegraf` and `envsubst` (from `gettext`) on your PATH.
 
 ## What the logger records
 
-The InfluxDB logger writes two measurements:
+The InfluxDB logger uses [Telegraf](https://docs.influxdata.com/telegraf/) to stream PUDA NATS traffic into two measurements:
 
 | Measurement | NATS subjects | Description |
 |---|---|---|
-| `machine_status` | `puda.*.tlm.health` | Real-time status timeline per machine |
-| `machine_commands` | `puda.*.cmd.queue`, `puda.*.cmd.immediate`, `puda.*.cmd.response.queue`, `puda.*.cmd.response.immediate` | Command and response log |
+| `commands` | `puda.*.cmd.*` (requests), `puda.*.cmd.response.*` (responses) | Command and response log |
+| `telemetry` | `puda.*.tlm.health` | Machine health metrics (`cpu`, `mem`, `temp`) |
 
-Command responses use durable JetStream consumers so messages published while the logger is offline are redelivered on reconnect.
+Command **requests** use a plain core NATS subscription. Command **responses** use Telegraf's ephemeral JetStream push consumer on the `RESPONSE_QUEUE` and `RESPONSE_IMMEDIATE` streams. Telegraf requires version **1.39+**.
 
-You can also adapt the logger to subscribe to other subjects, such as `puda.*.tlm.>` for additional telemetry, `puda.*.evt.>` for events and alerts, or `puda.>` for a full namespace archive.
+:::tip
+For the full field and tag schema, see the [influxdb-logger README](https://github.com/PUDAP/puda-logger/blob/main/influxdb/logger/README.md).
+:::
 
 ## Verify logging
 
