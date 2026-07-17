@@ -20,6 +20,9 @@ importers:
       '@mdx-js/react':
         specifier: ^3.0.0
         version: 3.1.1(@types/react@19.2.17)(react@19.2.7)
+      '@writechoice/docusaurus-plugin-llms-txt':
+        specifier: ^0.1.11
+        version: 0.1.11(@docusaurus/core@3.10.1(@docusaurus/faster@3.10.1(@docusaurus/types@3.10.1(@swc/core@1.15.43)(postcss@8.5.15)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(postcss@8.5.15))(@mdx-js/react@3.1.1(@types/react@19.2.17)(react@19.2.7))(@rspack/core@1.7.12)(@swc/core@1.15.43)(postcss@8.5.15)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3))
       clsx:
         specifier: ^2.0.0
         version: 2.1.1
@@ -2380,6 +2383,12 @@ packages:
 
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
+
+  '@writechoice/docusaurus-plugin-llms-txt@0.1.11':
+    resolution: {integrity: sha512-DflIGPe6dEAweM0DQQ7/SQryk/R3+QR+QCZAdcGmvm/gFsYi7g41jMMR3jvdzZRMoJFqIQCSg6M5INXF1w3jJQ==}
+    engines: {node: '>=18.0.0'}
+    peerDependencies:
+      '@docusaurus/core': '>=3.0.0'
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -9282,6 +9291,11 @@ snapshots:
     dependencies:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
+
+  '@writechoice/docusaurus-plugin-llms-txt@0.1.11(@docusaurus/core@3.10.1(@docusaurus/faster@3.10.1(@docusaurus/types@3.10.1(@swc/core@1.15.43)(postcss@8.5.15)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(postcss@8.5.15))(@mdx-js/react@3.1.1(@types/react@19.2.17)(react@19.2.7))(@rspack/core@1.7.12)(@swc/core@1.15.43)(postcss@8.5.15)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3))':
+    dependencies:
+      '@docusaurus/core': 3.10.1(@docusaurus/faster@3.10.1(@docusaurus/types@3.10.1(@swc/core@1.15.43)(postcss@8.5.15)(react-dom@19.2.7(react@19.2.7))(react@19.2.7))(postcss@8.5.15))(@mdx-js/react@3.1.1(@types/react@19.2.17)(react@19.2.7))(@rspack/core@1.7.12)(@swc/core@1.15.43)(postcss@8.5.15)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)(typescript@6.0.3)
+      js-yaml: 4.2.0
 
   '@xtuc/ieee754@1.2.0': {}
 

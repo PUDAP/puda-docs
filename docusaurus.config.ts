@@ -35,6 +35,17 @@ const config: Config = {
     locales: ['en'],
   },
 
+  plugins: [
+    [
+      '@writechoice/docusaurus-plugin-llms-txt',
+      {
+        description:
+          "Explore guides and tutorials to start building on PUDA's platform",
+        deployTarget: 'cloudflare',
+      },
+    ],
+  ],
+
   presets: [
     [
       'classic',
