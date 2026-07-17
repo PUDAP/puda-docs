@@ -29,8 +29,8 @@ ln -s /path/to/hermes-logger ~/.hermes/plugins/hermes-logger
 Install dependencies (requires Python 3.10 or newer):
 
 ```bash
-cd ~/.hermes/plugins/hermes-logger
-pip install -r requirements.txt
+cd ~/.hermes/hermes-agent/venv/bin
+./pip install -r ~/.hermes/plugins/hermes-logger/requirements.txt
 ```
 
 ## Configure credentials
@@ -38,6 +38,7 @@ pip install -r requirements.txt
 Copy the example environment file and set your InfluxDB connection details:
 
 ```bash
+cd ~/.hermes/plugins/hermes-logger
 cp .env.example .env
 ```
 

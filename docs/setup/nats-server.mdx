@@ -37,6 +37,7 @@ services:
     image: nats:2.12.2
     container_name: nats
     restart: always
+    network_mode: host
     ports:
       - "4222:4222"
       - "8222:8222"
