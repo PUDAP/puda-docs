@@ -4,7 +4,7 @@ sidebar_position: 3
 
 # Grafana Dashboard
 
-Once the [logging service](./logging-service) is writing to InfluxDB, you can add Grafana for dashboards, exploration, and alerts. Grafana queries the same `machine_status` and `machine_commands` measurements the logger writes from NATS.
+Once the [PUDA Logger](./logging-service) is writing to InfluxDB, you can add Grafana for dashboards, exploration, and alerts. Grafana queries the same `machine_status` and `machine_commands` measurements the logger writes from NATS.
 
 We provide a template at [PUDAP/puda-grafana](https://github.com/PUDAP/puda-grafana). It runs Grafana 13 with provisioned InfluxDB data sources and file-based dashboards for PUDA machines. If you also run [Hermes Logger](./hermes-logger), the template includes a second data source for the `hermes-logs` database.
 
@@ -20,7 +20,7 @@ cd puda-grafana
 cp .env.example .env
 ```
 
-Edit `.env` and point `INFLUXDB_URL` at the InfluxDB server from the [logging service setup](./logging-service#start-influxdb). Use the same token and database names you configured for the PUDA logger and Hermes Logger:
+Edit `.env` and point `INFLUXDB_URL` at the InfluxDB server from the [PUDA Logger setup](./logging-service#start-influxdb). Use the same token and database names you configured for the PUDA Logger and Hermes Logger:
 
 ```env title=".env"
 INFLUXDB_URL=http://<influxdb-host>:8181

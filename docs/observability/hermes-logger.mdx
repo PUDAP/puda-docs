@@ -6,13 +6,13 @@ sidebar_position: 2
 
 [Hermes Logger](https://github.com/PUDAP/hermes-logger) is a [Hermes observer plugin](https://github.com/NousResearch/hermes-agent/tree/main/docs/observability) that writes structured agent telemetry to InfluxDB. It captures user prompts, LLM API calls (including reasoning payloads), tool calls, subagent delegation, and approval flows for every Hermes session on a machine.
 
-Hermes Logger runs on the same host as the Hermes agent. It does not replace the [logging service](./logging-service), which records PUDA machine traffic from NATS. Use both when you want machine observability and agent observability in the same InfluxDB server.
+Hermes Logger runs on the same host as the Hermes agent. It does not replace the [PUDA Logger](./logging-service), which records PUDA machine traffic from NATS. Use both when you want machine observability and agent observability in the same InfluxDB server.
 
 ## Prerequisites
 
-Start an InfluxDB server first by following [Start InfluxDB](./logging-service#start-influxdb) in the logging service guide. Hermes Logger writes to that server over HTTP on port `8181`.
+Start an InfluxDB server first by following [Start InfluxDB](./logging-service#start-influxdb) in the PUDA Logger guide. Hermes Logger writes to that server over HTTP on port `8181`.
 
-Use a separate database for Hermes data—for example, `hermes-logs`—so agent telemetry stays separate from the `machine_status` and `machine_commands` measurements the PUDA logger writes.
+Use a separate database for Hermes data—for example, `hermes-logs`—so agent telemetry stays separate from the `commands` and `telemetry` measurements the PUDA logger writes.
 
 ## Install the plugin
 
@@ -117,7 +117,7 @@ You should see new rows appear for recent turns. If nothing shows up, confirm th
 
 ## Example queries
 
-These SQL examples match the InfluxDB 3 setup from the logging service. Adjust the time window and filters for your dashboards.
+These SQL examples match the InfluxDB 3 setup from the PUDA Logger. Adjust the time window and filters for your dashboards.
 
 **Recent user prompts:**
 
