@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # Hermes Logger
 
-[Hermes Logger](https://github.com/PUDAP/hermes-logger) is a [Hermes observer plugin](https://github.com/NousResearch/hermes-agent/tree/main/docs/observability) that writes structured agent telemetry to InfluxDB. It captures user prompts, LLM API calls (including reasoning payloads), tool calls, subagent delegation, and approval flows for every Hermes session on a machine.
+[Hermes Logger](https://github.com/PUDAP/hermes-logger) is a [Hermes observer plugin](https://github.com/NousResearch/hermes-agent/tree/main/docs/observability) that writes structured agent telemetry to InfluxDB. It captures user prompts, LLM API calls (including extracted reasoning text), tool calls, subagent delegation, and approval flows for every Hermes session on a machine.
 
 Hermes Logger runs on the same host as the Hermes agent. It does not replace the [PUDA Logger](./logging-service), which records PUDA machine traffic from NATS. Use both when you want machine observability and agent observability in the same InfluxDB server.
 
@@ -60,7 +60,7 @@ Optional tuning variables:
 | `AGENT_ID` | _(unset)_ | Identifier for the machine or agent running this plugin; added as the `agent_id` tag on every measurement when set |
 | `INFLUXDB_BATCH_SIZE` | `500` | Points buffered before a forced flush |
 | `INFLUXDB_FLUSH_INTERVAL_MS` | `10000` | Maximum milliseconds between automatic flushes |
-| `HERMES_LOGGER_MAX_TEXT_BYTES` | `8192` | Truncate text fields longer than this (`0` = unlimited) |
+| `HERMES_LOGGER_MAX_TEXT_BYTES` | `0` | Truncate text fields longer than this (`0` = unlimited) |
 | `HERMES_LOGGER_LOG_LEVEL` | `INFO` | Plugin log verbosity |
 
 Example `.env`:
@@ -91,7 +91,7 @@ Restart Hermes after changing `.env` so the plugin picks up the new credentials.
 |---|---|
 | `hermes_session` | Session start, end, and reset lifecycle |
 | `hermes_llm_turn` | Per-turn user prompt (`turn_start`) and final agent response (`turn_end`) |
-| `hermes_api_request` | Individual provider API attempts—timing, token usage, sanitized request and response payloads |
+| `hermes_api_request` | Individual provider API attempts—timing, token usage, sanitized request and response payloads, extracted reasoning text |
 | `hermes_tool_call` | Tool call start and end—name, args, result, duration, status |
 | `hermes_subagent` | Delegated child-agent start and stop with goal and summary |
 | `hermes_approval` | Dangerous-command approval requests and the user's response |
@@ -142,10 +142,21 @@ ORDER BY time DESC
 **Token usage per API request:**
 
 ```sql
-SELECT time, session_id, turn_id, model, prompt_tokens, completion_tokens, total_tokens
+SELECT time, session_id, turn_id, model, prompt_tokens, completion_tokens, total_tokens, reasoning_tokens
 FROM hermes_api_request
 WHERE time >= now() - interval '1 hour'
   AND event = 'api_end'
+ORDER BY time DESC
+```
+
+**Reasoning traces:**
+
+```sql
+SELECT time, session_id, turn_id, model, reasoning, reasoning_tokens
+FROM hermes_api_request
+WHERE time >= now() - interval '1 hour'
+  AND event = 'api_end'
+  AND reasoning <> ''
 ORDER BY time DESC
 ```
 

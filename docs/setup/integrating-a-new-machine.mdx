@@ -10,7 +10,7 @@ Each machine in PUDA runs an edge service. The edge service wraps the machine's 
 PUDA edge services currently support Python only, because it is the most commonly used language in the lab automation ecosystem. If you prefer to use another language, [contact us](https://www.puda.co/about) with your needs and we can create a PUDA SDK for it.
 :::
 
-Start by creating a new repository from the [puda-python-edge](https://github.com/PUDAP/puda-python-edge) template. Do not clone the template repository directly. Name your new repository `puda-<machine_id>-edge`, replacing `<machine_id>` with your machine ID.
+Use the [edge-python-template](https://github.com/PUDAP/edge-python-template) template to create a new repository. Name it `puda-<machine_id>-edge`, replacing `<machine_id>` with your machine ID.
 
 ```bash
 git clone https://github.com/<your-org>/puda-<machine_id>-edge.git
@@ -56,7 +56,7 @@ members = [
 ]
 ```
 
-Each subdirectory is a standalone edge service from the [puda-python-edge](https://github.com/PUDAP/puda-python-edge) template. Give each one a unique `MACHINE_ID` in its `.env` file, then start them individually or with a small script that launches every edge process on the PC.
+Each subdirectory is a standalone edge service from the [edge-python-template](https://github.com/PUDAP/edge-python-template) template. Give each one a unique `MACHINE_ID` in its `.env` file, then start them individually or with a small script that launches every edge process on the PC.
 
 ## Driver class
 
