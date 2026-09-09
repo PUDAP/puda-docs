@@ -78,26 +78,15 @@ If dashboards show no data from a remote Grafana host, confirm that port `8181` 
 
 ## Explore machine data
 
-Open **Explore**, select **PUDA InfluxDB**, and set the format to **Time series**. These queries match the logger schema (`telemetry` and `commands` tables in the `puda` database).
-
-### Current machine status (last-value cache)
-
-After `influxdb-cache-init` has created `telemetry_last`, this is an in-memory lookup of the latest health row per machine — not a table scan:
-
-```sql
-SELECT *
-FROM last_cache('telemetry', 'telemetry_last')
-```
-
-Use a **Table** or **Stat** panel. Entries expire after the cache TTL (default 10 minutes), so a machine that has stopped sending health drops out.
+Open **Explore**, select **PUDA InfluxDB**, and set the format to **Time series**. These queries match the logger schema.
 
 ### Machine status timeline
 
-Shows the health timeline the logger writes from `puda.*.tlm.health` (60s means):
+Shows the health timeline the logger writes from `puda.*.tlm.health`:
 
 ```sql
-SELECT time, machine_id, status, cpu, mem, temp
-FROM telemetry
+SELECT time, machine_id, status
+FROM machine_status
 WHERE time >= now() - interval '24 hours'
 ORDER BY time DESC
 ```
@@ -110,7 +99,7 @@ Lists command requests the logger captured from `puda.*.cmd.queue` and `puda.*.c
 
 ```sql
 SELECT time, machine_id, cmd_name, status, username
-FROM commands
+FROM machine_commands
 WHERE time >= now() - interval '24 hours'
   AND msg_type = 'command'
 ORDER BY time DESC
@@ -125,7 +114,7 @@ Shows responses from `puda.*.cmd.response.queue` and `puda.*.cmd.response.immedi
 
 ```sql
 SELECT time, machine_id, cmd_name, status, response_code, response_message
-FROM commands
+FROM machine_commands
 WHERE time >= now() - interval '7 days'
   AND msg_type = 'response'
 ORDER BY time DESC
@@ -138,8 +127,8 @@ Filter on `status != 'success'` or non-empty `response_code` to highlight failed
 
 Grafana can alert when a machine goes offline or when command failures spike. Example alert conditions:
 
-- **Machine offline**: no row in `last_cache('telemetry', 'telemetry_last')` for a given `machine_id`
-- **Command failure**: more than N rows in `commands` with `msg_type = 'response'` and `status != 'success'` in the last 15 minutes
+- **Machine offline**: no `machine_status` row with `status = 'online'` for a given `machine_id` in the last 2 minutes
+- **Command failure**: more than N rows in `machine_commands` with `msg_type = 'response'` and `status != 'success'` in the last 15 minutes
 
 Configure notification channels under **Alerting → Contact points**, then attach them to dashboard panel alerts or Grafana alert rules.
 
@@ -155,7 +144,7 @@ Confirm in Grafana **Explore** or on a provisioned dashboard that:
 
 1. A new row appears in `machine_commands` with `msg_type = 'command'`
 2. A matching response row appears with `msg_type = 'response'`
-3. `telemetry` (or `last_cache('telemetry', 'telemetry_last')`) shows the machine while health messages are arriving
+3. `machine_status` shows the machine as `online` while health messages are arriving
 
 If queries return no data, check that the [logger is running](./logging-service#verify-logging) and that the data source **Database** and **Token** in `.env` match the logger configuration.
 

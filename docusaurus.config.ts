@@ -52,6 +52,18 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
+          lastVersion: '0.0.36',
+          versions: {
+            current: {
+              label: 'v0.1.0 (beta)',
+              path: '0.1.0',
+              banner: 'unreleased',
+            },
+            '0.0.36': {
+              label: 'v0.0.36',
+              banner: 'none',
+            },
+          },
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
           editUrl:
@@ -92,6 +104,17 @@ const config: Config = {
         src: 'img/logo.svg',
       },
       items: [
+        {
+          type: 'doc',
+          docId: 'getting-started',
+          position: 'left',
+          label: 'Docs',
+        },
+        {
+          type: 'docsVersionDropdown',
+          position: 'right',
+          dropdownActiveClassDisabled: true,
+        },
         {
           href: 'https://github.com/pudap',
           label: 'GitHub',

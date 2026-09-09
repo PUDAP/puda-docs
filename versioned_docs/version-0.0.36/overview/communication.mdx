@@ -53,8 +53,8 @@ The `start` immediate command sets the active `run_id`. The `complete` immediate
 | --- | --- |
 | `puda.opentron.cmd.queue` | WorkQueue, ordered, exactly-once. |
 | `puda.opentron.cmd.immediate` | WorkQueue, ordered, exactly-once. |
-| `puda.opentron.cmd.response.queue` | Limits, 24h. Independent durables (CLI, loggers) each get a copy; messages survive a consumer restart. |
-| `puda.opentron.cmd.response.immediate` | Limits, 24h. Independent durables (CLI, loggers) each get a copy; messages survive a consumer restart. |
+| `puda.opentron.cmd.response.queue` | Interest, retained only until all subscribers acknowledge. |
+| `puda.opentron.cmd.response.immediate` | Interest, retained only until all subscribers acknowledge. |
 
 ### Events
 

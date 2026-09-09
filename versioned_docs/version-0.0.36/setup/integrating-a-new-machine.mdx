@@ -10,10 +10,10 @@ Each machine in PUDA runs an edge service. The edge service wraps the machine's 
 PUDA edge services currently support Python only, because it is the most commonly used language in the lab automation ecosystem. If you prefer to use another language, [contact us](https://www.puda.co/about) with your needs and we can create a PUDA SDK for it.
 :::
 
-Use the [edge-python-template](https://github.com/PUDAP/edge-python-template) template to create a new repository. Name it `puda-<machine_id>-edge`, replacing `<machine_id>` with your machine ID. The template depends on the `puda` Python SDK from PyPI. Pin it to **0.0.17** for this CLI release:
+Use the [edge-python-template](https://github.com/PUDAP/edge-python-template) template to create a new repository. Name it `puda-<machine_id>-edge`, replacing `<machine_id>` with your machine ID. The template depends on the `puda` Python SDK from PyPI. Pin it to **0.0.16** for this CLI release:
 
 ```bash
-pip install puda==0.0.17
+pip install puda==0.0.16
 ```
 
 ```bash
@@ -66,99 +66,59 @@ Each subdirectory is a standalone edge service from the [edge-python-template](h
 
 The main integration point is the `driver.py` class. This class should be a thin wrapper around the hardware code for your machine to make it more AI ready. If you already have example code for each command, an AI coding agent can usually turn that into a quick `driver.py` for you.
 
-Only methods marked `@command` are advertised and callable. Undecorated public methods stay local to the driver. Drivers with no `@command` methods fail until the edge uses Python SDK 0.0.17 or later.
+All public methods on the driver class are exposed as machine commands on PUDA, allowing an AI agent to access them using the PUDA CLI. This CLI release requires Python SDK **0.0.16**.
 
 ```bash
 puda machine commands <machine_id>
 ```
 
 :::caution
-Keep every machine action you want an AI agent to discover, call, and orchestrate on this driver wrapper class, and mark it with `@command`. Methods that live only in lower-level hardware clients or helper classes are not available as machine commands.
+Only methods defined on this driver wrapper class are exposed to PUDA. Keep every machine action you want an AI agent to discover, call, and orchestrate in this class. Methods that live only in lower-level hardware clients or helper classes will not be available as machine commands unless the driver wrapper exposes them.
 :::
 
-This means the driver method names, docstrings, parameters, and return annotations become part of the command interface that users and agents see. Optional `@safety` metadata is published in the command catalog so agents can prompt the operator before execution; it does not change dispatch. See [`@safety` decorator](#safety-decorator) for an example.
+This means the driver method names, docstrings, parameters, and return annotations become part of the command interface that users and agents see.
 
-Put a one-sentence summary on the **Driver class docstring**. PUDA advertises the first paragraph on `puda machine list` and `puda machine ping` so agents can tell what the machine does without fetching the command catalog.
-
-```python title="driver.py"
-class Driver:
-    """Software-only PUDA test machine. Commands are simulated in memory; no hardware is required."""
-```
-
-That first paragraph is what agents see:
-
-```bash
-puda machine list
-```
-
-```json
-{
-  "machines": [
-    {
-      "machine_id": "test-1",
-      "description": "Software-only PUDA test machine. Commands are simulated in memory; no hardware is required."
-    }
-  ],
-  "count": 1
-}
-```
-
-## Best practices
+## Driver best practices
 
 When writing the driver class:
 
-- Add a class docstring whose first paragraph is a one-sentence summary of what the machine does.
-- Mark remotely callable methods with `@command`. Undecorated methods are not advertised.
-- Attach `@safety` to commands that can cause harm so agents check preconditions and optionally confirm with the operator first.
-- Add docstrings for every `@command` method to provide context.
+- Add docstrings for every public method.
 - Document each parameter, error thrown and return object in the docstring.
 - Keep commands atomic, with each method performing one clear machine action.
 - Use only primitive objects in method parameters, such as `str`, `int`, `float`, `bool`, and simple lists or dictionaries of primitives.
-- Avoid exposing low-level helper methods as `@command` methods. Use private methods for internal helpers.
-- Raise an exception when a command fails. Returning `False` is still a successful PUDA response.
-- Lifecycle methods are optional: `shutdown` (called before the edge stops), `home` (triggered by `puda machine home`), and `reset` (`puda machine reset` always clears the run first).
+- Avoid exposing low-level helper methods as public methods. Use private methods for internal helpers.
+- Raise clear, verbose errors when a command fails so the PUDA CLI, logs, and agents can understand what happened.
+- Define the default lifecycle commands: `shutdown`, `home`, and `reset`.
 
 These are standard good programming practices. In PUDA, they also become useful context for AI agents because the command names, docstrings, types, and errors describe what the machine can do and how failures should be interpreted.
 
-## Lifecycle commands
+## Default commands
 
-These lifecycle methods are optional. Define them when the machine has matching hardware behavior.
-
-- `shutdown`: if defined, the edge calls it before the process stops so ports, sockets, and other resources are released.
-- `home`: if defined, triggered by `puda machine home <machine_id>`. Omit it if the machine has no home motion.
-- `reset`: if defined, `puda machine reset <machine_id>` calls it after clearing the active run ID. The CLI command still succeeds and clears the run if `reset` is omitted.
+Every driver should define these default commands:
 
 ```python title="driver.py"
-from puda import command
-
 class Driver:
-    """Software-only PUDA test machine. Commands are simulated in memory; no hardware is required."""
-
-    @command
     def shutdown(self) -> bool:
         """
-        Shutdown the machine. If defined, called before the edge stops running.
+        Shutdown the machine. Releases all resources and connections to the machine.
 
         Returns:
             bool: True if the shutdown was successful, False otherwise
         """
         return True
 
-    @command
     def home(self) -> bool:
         """
-        Homes the machine. If defined, triggered by PUDA CLI `puda machine home <machine_id>`.
+        Homes the machine. Used by PUDA CLI `puda machine home <machine_id>`.
 
         Returns:
             bool: True if the home was successful, False otherwise
         """
         return True
 
-    @command
     def reset(self) -> bool:
         """
-        Software reset the hardware. If defined, `puda machine reset <machine_id>`
-        calls this after clearing the active run ID.
+        Software reset the machine. Used by PUDA CLI `puda machine reset <machine_id>`.
 
         Returns:
             bool: True if the reset was successful, False otherwise
@@ -168,37 +128,11 @@ class Driver:
 
 ## Command design
 
-Prefer atomic commands that map to a single hardware action. Avoid commands that combine unrelated work, hide required inputs, or require complex objects that cannot be represented cleanly in the [protocol file](../overview/under-the-hood#protocol-generation).
+Prefer atomic commands that map to a single hardware action. Avoid commands that combine unrelated work, hide required inputs, or require complex objects that cannot be represented cleanly in the [protocol file](https://docs.puda.co/docs/overview/under-the-hood#protocol-generation).
 
 When a hardware operation fails, include the command, target values, and hardware response in the error message.
 
-## `@safety` decorator
-
-Attach `@safety` to a `@command` method to publish advisory context in the command catalog. It does not block edge dispatch. `@safety` without `@command` is ignored.
-
-All five fields are keyword-only:
-
-| Field | Required | Role |
-|---|---|---|
-| `summary` | yes | Headline of the risk |
-| `hazards` | no | Short tags such as `collision` or `thermal` |
-| `requires` | no | Preconditions; agents insert earlier steps or ask first |
-| `forbidden_when` | no | Situations where the command must not be used |
-| `confirm` | no | Operator `yes` gate. Defaults to `false`. Set `true` to opt in |
-
-Use `requires` for checks the agent must run first, such as a vision pass before motion or reagent checks before mixing:
-
 ```python title="driver.py"
-from puda import command, safety
-
-@command
-@safety(
-    summary="Collision risk from moving into an occupied workspace.",
-    hazards=["collision"],
-    requires="Before running this command, use the vision analyse skill to check the workspace for obstructions.",
-    forbidden_when="Do not move if vision reports an obstruction in the path.",
-    confirm=True,  # manual confirmation needed
-)
 def move_to(self, x_mm: float, y_mm: float, z_mm: float) -> bool:
     """
     Move the machine head to an absolute position.
@@ -222,8 +156,6 @@ def move_to(self, x_mm: float, y_mm: float, z_mm: float) -> bool:
         )
     return True
 ```
-
-The agent should run the vision analyse skill, confirm the path is clear, then call `move_to`. Because `confirm=True`, the agent then prompts the operator for confirmation before it proceeds with the move.
 
 ## Configure the edge service
 

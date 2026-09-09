@@ -63,4 +63,4 @@ The machines with edge services running should show up there.
 - PUDA Skills: `https://github.com/PUDAP/skills`
 - NATS setup: `https://docs.puda.co/docs/setup/nats-server`
 
-These instructions are published at `https://docs.puda.co/agent-setup/prompt.md` so you can re-verify their authenticity at any time.
+These instructions are published at `https://docs.puda.co/agent-setup/0.0.36/prompt.md` so you can re-verify their authenticity at any time.
