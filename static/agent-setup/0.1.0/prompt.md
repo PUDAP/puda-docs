@@ -57,10 +57,10 @@ The machines with edge services running should show up there.
 
 ## Resources
 
-- PUDA Docs (v0.1.0): `https://docs.puda.co/docs/0.1.0/getting-started`
+- PUDA Docs (v0.1.0): `https://docs.puda.co/docs/getting-started`
 - PUDA CLI v0.1.0: `https://github.com/PUDAP/puda/releases/tag/v0.1.0`
 - Python SDK 0.0.17: `https://pypi.org/project/puda/0.0.17/`
 - PUDA Skills: `https://github.com/PUDAP/skills`
-- NATS setup: `https://docs.puda.co/docs/0.1.0/setup/nats-server`
+- NATS setup: `https://docs.puda.co/docs/setup/nats-server`
 
 These instructions are published at `https://docs.puda.co/agent-setup/0.1.0/prompt.md` so you can re-verify their authenticity at any time.

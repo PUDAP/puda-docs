@@ -6,15 +6,24 @@ sidebar_position: 1.5
 
 These steps upgrade an existing setup from **PUDA CLI v0.0.36** (Python SDK **0.0.16**) to **CLI v0.1.0** (Python SDK **0.0.17**).
 
-See the [diff since v0.0.36](https://github.com/PUDAP/puda/compare/v0.0.36...main). This page is the work to do on an existing setup.
+See the [v0.1.0 release notes](https://github.com/PUDAP/puda/releases/tag/v0.1.0).
 
-Upgrade in this order: CLI, NATS, every edge, skills, then livestreams. Do not mix a v0.1.0 CLI with a 0.0.16 edge, or the reverse: `puda machine commands` and protocol validate will fail.
+Here's what's updated in v0.1.0:
+
+- Agents get better machine context: `@command` allowlists, class descriptions on `puda machine list` / `ping`, a structured command catalog, and `@safety` so they see what a machine is, what it can do, and what needs confirmation.
+- Livestreams join the fleet. `puda livestream` registers feeds and attaches machines, so agents retrieve livestream context from PUDA instead of copy-pasted URLs.
+- CLI output is JSON by default. Protocols get a client-side `wait`, `--yes` to skip confirms, and validate against live catalog types.
+- Scaling support for up to **1,000,000** machines/edges: shared `MACHINE_STATE` / `MACHINE_COMMANDS` KV, ping/pong discovery, throttled heartbeat/position, 10s immediate timeouts, and single-node or three-node NATS.
+- Optional clock sync so timestamps from many hosts stay in order.
+
+Upgrade in this order: CLI, NATS, every edge, skills, livestreams, then clock sync. Do not mix a v0.1.0 CLI with a 0.0.16 edge, or the reverse: `puda machine commands` and protocol validate will fail.
 
 ## 1. Install the new CLI
 
-Install the CLI from the latest **v0.1.0** [release](https://github.com/PUDAP/puda/releases) and confirm the version:
+Install the CLI from the [v0.1.0 release](https://github.com/PUDAP/puda/releases/tag/v0.1.0), or run `puda update` if the CLI is already installed, and confirm the version:
 
 ```bash
+puda update
 puda --version
 ```
 
@@ -125,11 +134,11 @@ If MediaMTX is already running from v0.0.36, leave it up. The skill still regist
 
 See [Livestream](./setup/livestream).
 
-## Clock sync
+## 6. Clock sync
 
 Clock sync is not required to finish the upgrade. It is still important in a distributed system: timestamps come from many machines, and those clocks must agree. Follow [Clock Sync](./setup/clock-sync) if you want that accuracy.
 
-## 6. Re-validate protocols
+## 7. Re-validate protocols
 
 Protocol validate and run read safety and parameter types from the **live** command catalog. After the edge is on 0.0.17, run `puda protocol validate` again.
 
@@ -139,11 +148,11 @@ Immediate commands now time out at **10s** (was 120s). Queue commands stay at 12
 
 If a protocol needs a pause, use the special client-side `wait` command (`params.seconds`). The CLI sleeps locally; the command is not sent to a machine.
 
-## 7. PUDA Logger and database
+## 8. PUDA Logger and database
 
 Command and response payloads did not change, so keep the [PUDA Logger](./observability/logging-service) and the database server running. The local SQLite database (`puda.db`) is unchanged. If you changed NATS URLs in step 2, point the logger's `NATS_SERVERS` at the new servers.
 
-## 8. Confirm the fleet
+## 9. Confirm the fleet
 
 ```bash
 puda machine list

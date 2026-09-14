@@ -1,2 +1,2 @@
-/docs/0.0.36 /docs 301
-/docs/0.0.36/* /docs/:splat 301
+/docs/0.1.0 /docs 301
+/docs/0.1.0/* /docs/:splat 301

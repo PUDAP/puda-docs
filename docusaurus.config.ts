@@ -52,12 +52,11 @@ const config: Config = {
       {
         docs: {
           sidebarPath: './sidebars.ts',
-          lastVersion: '0.0.36',
+          lastVersion: 'current',
           versions: {
             current: {
-              label: 'v0.1.0 (beta)',
-              path: '0.1.0',
-              banner: 'unreleased',
+              label: 'v0.1.0',
+              banner: 'none',
             },
             '0.0.36': {
               label: 'v0.0.36',

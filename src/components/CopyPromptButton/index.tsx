@@ -12,7 +12,7 @@ type CopyPromptButtonProps = {
 };
 
 /** Keep in sync with `lastVersion` in docusaurus.config.ts. */
-const LAST_DOCS_VERSION = '0.0.36';
+const LAST_DOCS_VERSION = '0.1.0';
 
 function useAgentPromptPath(): string {
   const {pathname} = useLocation();
