@@ -113,7 +113,7 @@ When writing the driver class:
 - Add docstrings for every `@command` method to provide context.
 - Document each parameter, error thrown and return object in the docstring.
 - Keep commands atomic, with each method performing one clear machine action.
-- Annotate `@command` parameters with [JSON primitives](#json-primitives) only. Protocol validate rejects types that cannot be represented in JSON.
+- Annotate `@command` parameters with [JSON primitives](#json-primitives). Protocol validate type-checks those annotations on commands the protocol uses. Unannotated parameters skip the type check. Types JSON cannot represent still fail validate when that command is used.
 - Avoid exposing low-level helper methods as `@command` methods. Use private methods for internal helpers.
 - Raise an exception when a command fails. Returning `False` is still a successful PUDA response.
 - Lifecycle methods are optional: `shutdown` (called before the edge stops), `home` (triggered by `puda machine home`), and `reset` (`puda machine reset` always clears the run first).
@@ -122,7 +122,11 @@ These are standard good programming practices. In PUDA, they also become useful 
 
 ## JSON primitives
 
-`puda protocol validate` checks each command's `params` against the live catalog. Parameter types must be **JSON primitives** because protocol files and command payloads are JSON, so the catalog can only describe types JSON can carry.
+`puda protocol validate` checks each **used** command's `params` against the live catalog. Parameter types must be **JSON primitives** because protocol files and command payloads are JSON, so the catalog can only describe types JSON can carry.
+
+Validate only parses catalog entries named in the protocol. Unused signatures are ignored, so an unparseable type on a command you are not running cannot fail the protocol.
+
+Unannotated parameters, `*args`, and `**kwargs` skip the type check (`any`). `*args` is not sent over NATS (dispatch is kwargs-only). Annotate parameters you want checked.
 
 | Catalog kind | JSON value | Example annotation |
 |---|---|---|

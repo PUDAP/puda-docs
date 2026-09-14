@@ -109,7 +109,7 @@ Attach `@safety` to commands that can cause harm so agents check preconditions a
 
 `MACHINE_COMMANDS` now includes a structured `catalog` (name, signature, doc, safety) next to the command text. A 0.0.16 edge that only published `{"commands": "..."}` is incompatible with this CLI.
 
-Protocol validate reads parameter types from that catalog as [JSON primitives](./setup/integrating-a-new-machine#json-primitives) (`str`, `int`, `float`, `bool`, `dict`, `list`, `bytes`, `any`, and nullable/unions of those). Annotate `@command` parameters with those kinds so `puda protocol validate` can check protocol `params`. Nested `dict`/`list`, typing aliases, and `Any` catalogs are accepted.
+Protocol validate reads parameter types from that catalog as [JSON primitives](./setup/integrating-a-new-machine#json-primitives) (`str`, `int`, `float`, `bool`, `dict`, `list`, `bytes`, `any`, and nullable/unions of those). Annotate `@command` parameters with those kinds so `puda protocol validate` can check protocol `params`. Nested `dict`/`list`, typing aliases, and `Any` catalogs are accepted. Validate only parses commands named in the protocol; unused catalog signatures are ignored. Unannotated parameters, `*args`, and `**kwargs` skip the type check.
 
 ## 4. Refresh skills
 
@@ -140,7 +140,7 @@ Clock sync is not required to finish the upgrade. It is still important in a dis
 
 ## 7. Re-validate protocols
 
-Protocol validate and run read safety and parameter types from the **live** command catalog. After the edge is on 0.0.17, run `puda protocol validate` again.
+Protocol validate and run read safety and parameter types from the **live** command catalog. After the edge is on 0.0.17, run `puda protocol validate` again. Only commands named in the protocol are parsed; unused catalog signatures cannot fail the file. Unannotated parameters skip the type check.
 
 Commands with `safety.confirm=true` will make the AI agent prompt you for a manual confirmation unless you pass `--yes`.
 

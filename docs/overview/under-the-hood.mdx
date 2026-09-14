@@ -133,7 +133,7 @@ After creating the protocol file, the agent validates it:
 puda protocol validate -f protocols/feaa6dc6-8559-4902-88dd-daed44b88840.json
 ```
 
-Validation checks that the protocol shape is correct and that each command's `params` match the machine catalog's [JSON primitive](../setup/integrating-a-new-machine#json-primitives) types before anything reaches a physical machine. If validation fails, the agent fixes the protocol and validates again.
+Validation checks that the protocol shape is correct and that each named command's `params` match the live catalog's [JSON primitive](../setup/integrating-a-new-machine#json-primitives) types before anything reaches a physical machine. Only commands in the protocol are parsed; unused catalog entries are ignored. Unannotated parameters, `*args`, and `**kwargs` skip the type check. If validation fails, the agent fixes the protocol and validates again.
 
 Once the protocol is valid, the agent runs it:
 
