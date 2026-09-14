@@ -121,7 +121,9 @@ puda skills update
 
 The updated skills cover livestream, clock sync, and the special client-side protocol `wait` command:
 
-- **puda** — livestream: given the camera source, stream name, description, host, and machine IDs, the agent brings up MediaMTX and ffmpeg and registers the stream with `puda livestream`. Clock sync: given the site NTP server IP, the agent runs `scripts/sync-clock.sh` or `scripts/sync-clock.ps1` from the puda skill on the edge host. `puda machine list` includes `livestream_count` for registered streams.
+- **puda**
+  - **Livestream** — given the camera source, stream name, description, host, and machine IDs, the agent brings up MediaMTX and ffmpeg and registers the stream with `puda livestream`.
+  - **Clock sync** — given the site NTP server IP, the agent runs `scripts/sync-clock.sh` or `scripts/sync-clock.ps1` from the puda skill on the edge host (Chrony on Linux, Windows Time on Windows).
 - **puda-protocol** — agents can insert a special client-side `wait` command (`params.seconds`) to pause a protocol or a single machine in a parallel step. The CLI sleeps locally; `wait` is not sent to a machine.
 
 ## 5. Livestreams
