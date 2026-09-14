@@ -35,7 +35,7 @@ nano .env
 Confirm `NATS_SERVERS` points to the reachable NATS address:
 
 ```env title=".env"
-NATS_SERVERS=nats://<nats-server-ip>:4222
+NATS_SERVERS=nats://<nats-server-host>:<port>
 ```
 
 Also confirm `INFLUXDB_URL`, `INFLUXDB_TOKEN`, and `INFLUXDB_DATABASE` match the InfluxDB server used by Grafana.

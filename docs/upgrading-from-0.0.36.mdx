@@ -1,0 +1,157 @@
+---
+sidebar_position: 1.5
+---
+
+# Upgrading from v0.0.36
+
+These steps upgrade an existing setup from **PUDA CLI v0.0.36** (Python SDK **0.0.16**) to **CLI v0.1.0** (Python SDK **0.0.17**).
+
+See the [diff since v0.0.36](https://github.com/PUDAP/puda/compare/v0.0.36...main). This page is the work to do on an existing setup.
+
+Upgrade in this order: CLI, NATS, every edge, skills, then livestreams. Do not mix a v0.1.0 CLI with a 0.0.16 edge, or the reverse: `puda machine commands` and protocol validate will fail.
+
+## 1. Install the new CLI
+
+Install the CLI from the latest **v0.1.0** [release](https://github.com/PUDAP/puda/releases) and confirm the version:
+
+```bash
+puda --version
+```
+
+CLI machine commands now print JSON by default (`list`, `ping`, `state`, `commands`). Pass `--human` for the old text output.
+
+`puda machine list` discovers live edges from ping/pong and reports `machine_id`, `description`, and `livestream_count`. `puda machine ping <machine_id>` probes specific IDs and includes `sdk_version`, `run_status`, and registered livestream URLs.
+
+v0.1.0 adds `puda livestream` for agents (`add`, `list`, `attach`, `detach`, `rm`). Agents register camera streams in the fleet registry instead of relying on pasted URLs.
+
+Optional: `puda healthcheck` probes each configured NATS URL, cluster membership, and JetStream.
+
+`puda machine` and `puda protocol run` accept `--yes` / `-y` to skip safety confirmation prompts.
+
+A protocol command named `wait` is handled by the CLI: it sleeps for `params.seconds` and is not sent to a machine.
+
+## 2. Redeploy the NATS server
+
+JetStream stream and KV definitions changed in v0.1.0. Shared buckets `MACHINE_STATE` and `MACHINE_COMMANDS` replace the old per-machine buckets, and `LIVESTREAMS` is new. The v0.0.36 hand-written Compose file is not enough. Redeploy from [`infra/nats`](https://github.com/PUDAP/puda/tree/main/infra/nats) rather than patching the old instance.
+
+Pick one layout from [NATS Server](./setup/nats-server):
+
+- **Single-node** — one NATS server on one computer.
+- **Three-node** — one NATS server on each of three computers on the same network.
+
+After the server is running, apply JetStream once with `REPLICAS=1` (single-node) or `REPLICAS=3` (three-node). Old per-machine KV buckets are unused.
+
+## 3. Upgrade every edge to SDK 0.0.17 or later
+
+On each edge, set the `puda` dependency in `pyproject.toml` to **0.0.17 or later**:
+
+```toml title="pyproject.toml"
+dependencies = [
+    "puda>=0.0.17",
+]
+```
+
+Keep your other dependencies. Then lock and install:
+
+```bash
+uv lock
+uv sync
+```
+
+If the edge is managed with `puda machine update`, deploy after the driver changes below.
+
+Heartbeat is now published at most every **5s** and position at most every **3s**. Dashboards that expected 1 Hz on those subjects will look quieter.
+
+### Mark remote commands with `@command`
+
+v0.0.36 advertised every public driver method. v0.1.0 advertises only methods decorated with `@command`. A driver with none of those methods fails at startup with `Update SDK to 0.0.17`.
+
+```python title="driver.py"
+from puda import command
+
+class Driver:
+    """One-sentence summary of what this machine does."""
+
+    @command
+    def move_to(self, x_mm: float, y_mm: float, z_mm: float) -> bool:
+        """Move the machine head to an absolute position."""
+        ...
+```
+
+Keep helpers private (`_name`). Inherited serial APIs and other undecorated public methods stay local.
+
+Put a one-sentence summary in the **class docstring**. `puda machine list` and `puda machine ping` show that first paragraph as `description`.
+
+### Raise on failure
+
+Command handlers must raise to fail. Returning `False` is still a successful PUDA response (`{"result": false}`), which might confuse the AI agent.
+
+### Optional: `@safety`
+
+Attach `@safety` to commands that can cause harm so agents check preconditions and optionally confirm with the operator. It is published in the catalog; it does not block edge dispatch. See [`@safety` decorator](./setup/integrating-a-new-machine#safety-decorator).
+
+### Optional: lifecycle methods
+
+`shutdown`, `home`, and `reset` are optional.
+
+- `shutdown`, if defined, runs before the edge stops.
+- `home`, if defined, is triggered by `puda machine home`.
+- `puda machine reset` always clears the active run ID, then calls `reset` if present. A missing `reset` is a successful no-op.
+
+`MACHINE_COMMANDS` now includes a structured `catalog` (name, signature, doc, safety) next to the command text. A 0.0.16 edge that only published `{"commands": "..."}` is incompatible with this CLI.
+
+Protocol validate reads parameter types from that catalog as [JSON primitives](./setup/integrating-a-new-machine#json-primitives) (`str`, `int`, `float`, `bool`, `dict`, `list`, `bytes`, `any`, and nullable/unions of those). Annotate `@command` parameters with those kinds so `puda protocol validate` can check protocol `params`. Nested `dict`/`list`, typing aliases, and `Any` catalogs are accepted.
+
+## 4. Refresh skills
+
+On the agent host:
+
+```bash
+puda skills update
+```
+
+The updated skills cover livestream, clock sync, and the special client-side protocol `wait` command:
+
+- **puda** — livestream: given the camera source, stream name, description, host, and machine IDs, the agent brings up MediaMTX and ffmpeg and registers the stream with `puda livestream`. Clock sync: given the site NTP server IP, the agent runs `scripts/sync-clock.sh` or `scripts/sync-clock.ps1` from the puda skill on the edge host. `puda machine list` includes `livestream_count` for registered streams.
+- **puda-protocol** — agents can insert a special client-side `wait` command (`params.seconds`) to pause a protocol or a single machine in a parallel step. The CLI sleeps locally; `wait` is not sent to a machine.
+
+## 5. Livestreams
+
+v0.0.36 ran cameras as a standalone MediaMTX stack, separate from PUDA. You had to give the agent the URLs and machine context yourself.
+
+v0.1.0 keeps that stack and adds the `puda livestream` subcommand plus a fleet registry in NATS KV (`LIVESTREAMS`). You do not register streams by hand. After puda skills are updated, give the agent the camera source (USB `/dev/video*` path or `rtsp://` URL), livestream name, a short description, the MediaMTX **host** (MagicDNS, Tailscale IP, or the machine IP if there is no Tailscale), and the **machine IDs** that are using the feed. The skill starts MediaMTX and ffmpeg if they are not already running, then registers with `puda livestream add`.
+
+If MediaMTX is already running from v0.0.36, leave it up. The skill still registers the existing streams so `puda machine list` and `puda machine ping` can see them.
+
+See [Livestream](./setup/livestream).
+
+## Clock sync
+
+Clock sync is not required to finish the upgrade. It is still important in a distributed system: timestamps come from many machines, and those clocks must agree. Follow [Clock Sync](./setup/clock-sync) if you want that accuracy.
+
+## 6. Re-validate protocols
+
+Protocol validate and run read safety and parameter types from the **live** command catalog. After the edge is on 0.0.17, run `puda protocol validate` again.
+
+Commands with `safety.confirm=true` will make the AI agent prompt you for a manual confirmation unless you pass `--yes`.
+
+Immediate commands now time out at **10s** (was 120s). Queue commands stay at 120s.
+
+If a protocol needs a pause, use the special client-side `wait` command (`params.seconds`). The CLI sleeps locally; the command is not sent to a machine.
+
+## 7. PUDA Logger and database
+
+Command and response payloads did not change, so keep the [PUDA Logger](./observability/logging-service) and the database server running. The local SQLite database (`puda.db`) is unchanged. If you changed NATS URLs in step 2, point the logger's `NATS_SERVERS` at the new servers.
+
+## 8. Confirm the fleet
+
+```bash
+puda machine list
+puda machine ping <machine_id>
+puda machine commands <machine_id>
+puda livestream list --machines <machine_id>
+```
+
+`puda machine list` should show `description` and `livestream_count`. `puda machine ping` should show `sdk_version` `0.0.17` or later and any registered livestream URLs. `puda machine commands` should list only `@command` methods.
+
+More driver detail: [Integrating a New Machine](./setup/integrating-a-new-machine). SDK notes: [Python SDK changelog](https://github.com/PUDAP/puda/blob/main/libs/python-sdk/CHANGELOG.md).

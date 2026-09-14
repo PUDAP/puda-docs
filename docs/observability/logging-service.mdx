@@ -74,14 +74,14 @@ cd puda-logger/influxdb/logger
 cp .env.example .env
 ```
 
-Edit `.env` and point the logger at your InfluxDB server and NATS broker. Use the same `INFLUXDB_TOKEN` from [Start InfluxDB](#start-influxdb). Set `NATS_SERVERS` to the NATS URL(s) the logger can reach—for example, `nats://<nats-host>:4222`:
+Edit `.env` and point the logger at your InfluxDB server and NATS broker. Use the same `INFLUXDB_TOKEN` from [Start InfluxDB](#start-influxdb). Set `NATS_SERVERS` to the NATS URL(s) the logger can reach—for example, `nats://<nats-host>:<port>`:
 
 ```env title=".env"
 INFLUXDB_URL=http://<influxdb-host>:8181
 INFLUXDB_TOKEN=<token>
 INFLUXDB_DATABASE=puda
 INFLUXDB_ORGANIZATION=bears
-NATS_SERVERS=nats://<nats-host>:4222
+NATS_SERVERS=nats://<nats-host>:<port>
 LOGGER_REPLICAS=1
 JS_MAX_ACK_PENDING=20000
 ```

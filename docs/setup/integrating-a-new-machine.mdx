@@ -10,10 +10,10 @@ Each machine in PUDA runs an edge service. The edge service wraps the machine's 
 PUDA edge services currently support Python only, because it is the most commonly used language in the lab automation ecosystem. If you prefer to use another language, [contact us](https://www.puda.co/about) with your needs and we can create a PUDA SDK for it.
 :::
 
-Use the [edge-python-template](https://github.com/PUDAP/edge-python-template) template to create a new repository. Name it `puda-<machine_id>-edge`, replacing `<machine_id>` with your machine ID. The template depends on the `puda` Python SDK from PyPI. Pin it to **0.0.17** for this CLI release:
+Use the [edge-python-template](https://github.com/PUDAP/edge-python-template) template to create a new repository. Name it `puda-<machine_id>-edge`, replacing `<machine_id>` with your machine ID. The template depends on the `puda` Python SDK from PyPI. Require **0.0.17 or later** for this CLI release:
 
 ```bash
-pip install puda==0.0.17
+pip install "puda>=0.0.17"
 ```
 
 ```bash
@@ -66,7 +66,7 @@ Each subdirectory is a standalone edge service from the [edge-python-template](h
 
 The main integration point is the `driver.py` class. This class should be a thin wrapper around the hardware code for your machine to make it more AI ready. If you already have example code for each command, an AI coding agent can usually turn that into a quick `driver.py` for you.
 
-Only methods marked `@command` are advertised and callable. Undecorated public methods stay local to the driver. Drivers with no `@command` methods fail until the edge uses Python SDK 0.0.17 or later.
+Only methods marked `@command` are advertised and callable. Undecorated public methods stay local to the driver. Drivers with no `@command` methods fail until the edge uses Python SDK 0.0.17 or later. Do not use types JSON cannot represent in `@command` parameters; see [JSON primitives](#json-primitives).
 
 ```bash
 puda machine commands <machine_id>
@@ -113,12 +113,42 @@ When writing the driver class:
 - Add docstrings for every `@command` method to provide context.
 - Document each parameter, error thrown and return object in the docstring.
 - Keep commands atomic, with each method performing one clear machine action.
-- Use only primitive objects in method parameters, such as `str`, `int`, `float`, `bool`, and simple lists or dictionaries of primitives.
+- Annotate `@command` parameters with [JSON primitives](#json-primitives) only. Protocol validate rejects types that cannot be represented in JSON.
 - Avoid exposing low-level helper methods as `@command` methods. Use private methods for internal helpers.
 - Raise an exception when a command fails. Returning `False` is still a successful PUDA response.
 - Lifecycle methods are optional: `shutdown` (called before the edge stops), `home` (triggered by `puda machine home`), and `reset` (`puda machine reset` always clears the run first).
 
 These are standard good programming practices. In PUDA, they also become useful context for AI agents because the command names, docstrings, types, and errors describe what the machine can do and how failures should be interpreted.
+
+## JSON primitives
+
+`puda protocol validate` checks each command's `params` against the live catalog. Parameter types must be **JSON primitives** because protocol files and command payloads are JSON, so the catalog can only describe types JSON can carry.
+
+| Catalog kind | JSON value | Example annotation |
+|---|---|---|
+| `str` | string | `name: str` |
+| `int` | integer | `count: int` |
+| `float` | number | `x_mm: float` |
+| `bool` | boolean | `enabled: bool` |
+| `bytes` | string | `blob: bytes` |
+| `null` | null | `None` |
+| `dict` | object | `layout: dict[str, str]` |
+| `list` | array | `values: list[int]` |
+| `any` | any JSON value | `payload: Any` |
+
+Nullable values use `T | None`. Unions of primitives such as `int | float` are allowed. Object keys must be `str`. Nested objects and arrays of primitives are allowed, for example `dict[str, str]` or `list[int]`.
+
+```python title="driver.py"
+from puda import command
+
+class Driver:
+    """Example machine whose commands use JSON primitives."""
+
+    @command
+    def load_deck(self, layout: dict[str, str]) -> dict[str, str | None]:
+        """Load labware names onto deck slots."""
+        ...
+```
 
 ## Lifecycle commands
 
@@ -168,23 +198,23 @@ class Driver:
 
 ## Command design
 
-Prefer atomic commands that map to a single hardware action. Avoid commands that combine unrelated work, hide required inputs, or require complex objects that cannot be represented cleanly in the [protocol file](../overview/under-the-hood#protocol-generation).
+Prefer atomic commands that map to a single hardware action. Avoid commands that combine unrelated work, hide required inputs, or require complex objects that cannot be represented cleanly as [JSON primitives](#json-primitives) in the [protocol file](../overview/under-the-hood#protocol-generation).
 
 When a hardware operation fails, include the command, target values, and hardware response in the error message.
 
 ## `@safety` decorator
 
-Attach `@safety` to a `@command` method to publish advisory context in the command catalog. It does not block edge dispatch. `@safety` without `@command` is ignored.
+Attach `@safety` to a `@command` method to publish advisory context in the command catalog. It does not block edge dispatch. `@safety` without `@command` is ignored. Use [JSON primitives](#json-primitives) for `@safety` parameters.
 
 All five fields are keyword-only:
 
-| Field | Required | Role |
-|---|---|---|
-| `summary` | yes | Headline of the risk |
-| `hazards` | no | Short tags such as `collision` or `thermal` |
-| `requires` | no | Preconditions; agents insert earlier steps or ask first |
-| `forbidden_when` | no | Situations where the command must not be used |
-| `confirm` | no | Operator `yes` gate. Defaults to `false`. Set `true` to opt in |
+| Field | Type | Required | Role |
+|---|---|---|---|
+| `summary` | `str` | yes | Headline of the risk |
+| `hazards` | `list[str]` | no | Short tags such as `collision` or `thermal` |
+| `requires` | `str` | no | Preconditions; agents insert earlier steps or ask first |
+| `forbidden_when` | `str` | no | Situations where the command must not be used |
+| `confirm` | `bool` | no | Defaults to `false`. When `true`, the AI agent asks the operator to confirm before running the command. |
 
 Use `requires` for checks the agent must run first, such as a vision pass before motion or reagent checks before mixing:
 
@@ -233,7 +263,7 @@ Keep `MACHINE_ID` and `NATS_SERVERS` in `.env`, then add the variables your hard
 
 ```bash title=".env"
 MACHINE_ID=my-machine
-NATS_SERVERS=nats://<nats-server-ip>:4222
+NATS_SERVERS=nats://<nats-server-host>:<port>
 
 # Add variables as needed
 MY_MACHINE_HOST=192.168.1.50

@@ -1,0 +1,159 @@
+---
+sidebar_position: 3.5
+---
+
+# Clock Sync
+
+Clock sync is very important in a distributed system. PUDA timestamps come from many machines — the CLI, NATS host, edges, and loggers — and those clocks must agree so command times, discovery leases, and experiment provenance stay accurate.
+
+Core NATS forwards messages; it does not add a canonical send/receive timestamp or synchronize system clocks. If a publisher adds a timestamp, that time comes from the publisher's local clock. Clock skew can make message times appear out of order across machines.
+
+Setup is optional if the site already has NTP you trust, or if a single-host setup is enough.
+
+The edge process does not talk NTP. It uses the **host** clock. Do not run Chrony inside an edge Docker container.
+
+```text
+public/campus NTP  →  chrony on the NATS host  →  chronyd / w32time on each edge host
+```
+
+This guide uses [`infra/chrony`](https://github.com/PUDAP/puda/tree/main/infra/chrony) in the PUDA repository. It assumes Docker Engine and Docker Compose are installed on the NATS host.
+
+## 1. Site NTP server (NATS host)
+
+Run Chrony on the **same computer as NATS**. Only one process can bind UDP 123 or set the system clock. If Docker container `chrony` is already running here, this host is already the site NTP server — skip to [edge hosts](#2-edge-hosts).
+
+Stop any host NTP daemon first:
+
+```bash
+sudo timedatectl set-ntp false
+sudo systemctl disable --now chrony chronyd systemd-timesyncd 2>/dev/null || true
+```
+
+From the PUDA repository:
+
+```bash
+git clone https://github.com/PUDAP/puda.git
+cd puda/infra/chrony
+cp .env.example .env
+```
+
+Set `HOST_IP` in `.env` to this computer's reachable LAN or Tailscale address. Edge hosts use that value as their NTP server. Then:
+
+```bash
+docker compose up -d --build
+```
+
+The container must use **host networking**. Docker bridge port publish rewrites the NTP reply source port; edge `chronyd` then drops the packet (`Reach 0`).
+
+If a host firewall is enabled, allow NTP:
+
+```bash
+sudo ufw allow 123/udp
+```
+
+To use campus NTP instead of `pool ntp.ubuntu.com`, edit `chrony.conf` and recreate:
+
+```conf title="chrony.conf"
+server ntp.example.edu iburst
+```
+
+```bash
+docker compose up -d --force-recreate
+```
+
+Confirm the server is locked to upstream:
+
+```bash
+docker compose ps
+docker exec chrony chronyc tracking
+docker exec chrony chronyc sources -v
+```
+
+`Leap status : Normal` means this server is locked. From another host, replace `<NTP_SERVER>` with `HOST_IP`:
+
+```bash
+chronyd -Q "server <NTP_SERVER> iburst"
+```
+
+## 2. Edge hosts
+
+Point each edge **host** at the site NTP server (`HOST_IP` from the NATS Chrony `.env`). Do not start a second NTP server on an edge.
+
+### Linux
+
+```bash
+sudo timedatectl set-ntp false
+sudo apt update && sudo apt install -y chrony
+sudo systemctl disable --now systemd-timesyncd ntp ntpd 2>/dev/null || true
+```
+
+Write `/etc/chrony/chrony.conf` (or `/etc/chrony.conf`). Comment out any `pool` lines. `port 0` means this host does not serve NTP:
+
+```conf title="/etc/chrony/chrony.conf"
+server <NTP_SERVER> iburst
+port 0
+makestep 1.0 3
+rtcsync
+driftfile /var/lib/chrony/chrony.drift
+```
+
+Ubuntu also ships pool sources under `/etc/chrony/sources.d`. Move those files aside so the host locks to site NTP only.
+
+```bash
+sudo systemctl enable --now chrony
+sudo systemctl restart chrony
+```
+
+On Debian/Ubuntu the unit is `chrony.service`; on RHEL/Fedora it is `chronyd.service`.
+
+The [puda skill](https://github.com/PUDAP/skills/tree/main/puda) also ships these client scripts. From the skill directory:
+
+```bash
+sudo ./scripts/sync-clock.sh <NTP_SERVER>
+```
+
+### Windows
+
+Elevated PowerShell. From the puda skill directory:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\sync-clock.ps1 -NtpServer <NTP_SERVER>
+```
+
+Manual equivalent:
+
+```powershell
+Set-Service -Name w32time -StartupType Automatic
+Start-Service -Name w32time
+w32tm /config /manualpeerlist:"<NTP_SERVER>,0x8" /syncfromflags:manual /reliable:YES /update
+Restart-Service -Name w32time
+w32tm /resync /force
+```
+
+## 3. Verify lock
+
+Status printed immediately after setup is often still unlocked (`Leap status : Not synchronised`, source state `?`). Wait one or two minutes, then check again.
+
+Linux:
+
+```bash
+chronyc tracking
+chronyc sources -v
+```
+
+Locked when:
+
+- `Leap status : Normal`
+- `*` next to the NTP server (not `?`)
+- `Reach` climbing toward `377`
+
+`^?` with a non-zero Reach and a Last sample means packets arrived; wait for more polls. `Reach 0` means replies are not getting back (wrong address, firewall, or NTP served through Docker bridge NAT).
+
+Windows:
+
+```powershell
+w32tm /query /status
+w32tm /query /peers
+```
+
+Locked when Source is the NTP server and Last Successful Sync Time is recent, not `1/1/1901` or empty.

@@ -4,7 +4,14 @@ sidebar_position: 3
 
 # NATS Server
 
-The NATS server is the central communication point for PUDA. It should run on a machine that stays powered on, because the PUDA CLI, edge services, and logger services all depend on it for commands, telemetry, events, and logs.
+The NATS server is the central communication point for PUDA. The CLI, edge services, and logger services all depend on it for commands, telemetry, events, and logs.
+
+v0.1.0 uses one of two layouts from [`infra/nats`](https://github.com/PUDAP/puda/tree/main/infra/nats) in the PUDA repository:
+
+- **Single-node** — one NATS server on one always-on computer. No failover.
+- **Three-node** — one NATS server on each of three computers on the same network (LAN or Tailscale). The cluster survives one host going down.
+
+After the server is running, apply the JetStream streams and KV buckets once from [`infra/nats/jetstream`](https://github.com/PUDAP/puda/tree/main/infra/nats/jetstream). Do not skip that step.
 
 Use a mini PC, Raspberry Pi, or another small always-on machine. Install a stable Linux distribution such as Ubuntu Server or Debian.
 
@@ -20,107 +27,76 @@ After Docker is installed, confirm that Docker Compose is available:
 docker compose version
 ```
 
-## Single NATS server
-
-For a small PUDA setup, a single NATS server is enough. Create a project directory on the NATS machine:
+Clone the PUDA repository so you have the NATS layouts and JetStream configs:
 
 ```bash
-mkdir puda-nats
-cd puda-nats
+git clone https://github.com/PUDAP/puda.git
+cd puda/infra/nats
 ```
 
-Create `compose.yml`:
+## Single-node
 
-```yaml title="compose.yml"
-services:
-  nats:
-    image: nats:2.12.2
-    container_name: nats
-    restart: always
-    network_mode: host
-    ports:
-      - "4222:4222"
-      - "8222:8222"
-      - "1883:1883"
-    volumes:
-      - nats:/data
-      - ./nats.conf:/etc/nats/nats.conf:ro
-    command: "-c /etc/nats/nats.conf"
+One computer runs the NATS server. Follow [`single-node/README.md`](https://github.com/PUDAP/puda/blob/main/infra/nats/single-node/README.md).
 
-volumes:
-  nats:
+```bash
+cd single-node
+cp .env.example .env
 ```
 
-Create `nats.conf`:
-
-```conf title="nats.conf"
-# Client connection port
-port: 4222
-
-# HTTP monitoring port
-http_port: 8222
-
-# mqtt config
-mqtt {
-  port: 1883
-}
-
-# Max payload size for messages
-max_payload: 64MB
-
-# JETSTREAM CONFIGURATION
-# https://docs.nats.io/running-a-nats-service/configuration/resource_management
-jetstream {
-    store_dir: "/data/jetstream"
-    max_mem: 4G
-    max_file: 10G
-
-    request_queue_limit: 1000
-    limits {
-      max_ha_assets = 2000
-    }
-}
-```
-
-Start the server:
+Set `HOST_IP` in `.env` to this computer's reachable LAN or Tailscale address. Then:
 
 ```bash
 docker compose up -d
 ```
 
+Apply JetStream with one replica:
+
+```bash
+cd ../jetstream
+NATS_URL=nats://localhost:<port> REPLICAS=1 ./setup_streams.sh
+```
+
 The NATS client URL is:
 
 ```text
-nats://<nats-server-ip>:4222
+nats://<nats-server-host>:<port>
 ```
 
-Use the Tailscale IP or hostname if you followed the recommended network setup.
+This layout has no server or JetStream failover.
 
-## NATS cluster
+## Three-node
 
-For a more resilient PUDA setup, run a NATS cluster instead of a single server. A cluster lets multiple NATS servers work together as one communication layer, so PUDA clients can keep operating even if one server or machine goes offline.
+Use three computers on the same network. Copy `three-node-r3/nats1/`, `nats2/`, and `nats3/` to one host each. Follow [`three-node-r3/README.md`](https://github.com/PUDAP/puda/blob/main/infra/nats/three-node-r3/README.md).
 
-A NATS cluster is useful when you want:
+The [PUDAP/puda-nats-template](https://github.com/PUDAP/puda-nats-template) repository is the same three-computer layout (`machine1`, `machine2`, `machine3`).
 
-- **Higher availability** — clients can connect to another NATS server if one node is unavailable.
-- **JetStream quorum** — persisted streams and key-value state can be replicated across nodes.
-- **Maintenance without full downtime** — one server can be restarted while the rest of the cluster continues serving clients.
-- **Better lab resilience** — if the NATS server runs on small hardware such as mini PCs or Raspberry Pis, a cluster reduces the impact of one device failing.
+On each host:
 
-The recommended PUDA cluster shape is three NATS servers connected through NATS routes:
+```bash
+cp .env.example .env
+```
 
-| Node | Client port | Route port | Role |
-| --- | --- | --- | --- |
-| `nats1` | `4222` | `6222` | Accepts PUDA client connections and participates in the cluster. |
-| `nats2` | `4222` | `6222` | Accepts PUDA client connections and participates in the cluster. |
-| `nats3` | `4222` | `6222` | Accepts PUDA client connections and participates in the cluster. |
+Fill in reachable addresses for this host and the other two. Route port `6222` must be reachable between all three computers. Then on every host:
 
-Configure PUDA clients with all three servers so they can reconnect automatically if one node is unavailable:
+```bash
+docker compose up -d
+```
+
+After all three nodes are up, apply JetStream **once** from an operator machine that has `infra/nats/jetstream`:
+
+```bash
+cd jetstream
+NATS_URL=nats://<nats1-host>:<port> REPLICAS=3 ./setup_streams.sh
+```
+
+Do not run the JetStream bootstrap independently on all three servers.
+
+Configure PUDA clients with all three URLs:
 
 ```env title=".env"
-NATS_SERVERS=nats://nats1:4222,nats://nats2:4222,nats://nats3:4222
+NATS_SERVERS=nats://<nats1-host>:<port>,nats://<nats2-host>:<port>,nats://<nats3-host>:<port>
 ```
 
-Use the [PUDAP/puda-nats-template](https://github.com/PUDAP/puda-nats-template) repository to set up the cluster and follow the instructions in its README. The template contains the Docker Compose and NATS configuration needed for the recommended setup.
-
 Once this is done, you can start integrating a new machine.
+
+Optional: sync host clocks with [Clock Sync](./clock-sync) so timestamps agree across the NATS host and every edge.
