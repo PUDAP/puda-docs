@@ -2,13 +2,13 @@
 sidebar_position: 1.5
 ---
 
-# Upgrading to v0.1.0
+# Upgrading to v0.1.x
 
-These steps take a **0.0.x** setup (CLI through **v0.0.36**, Python SDK through **0.0.16**) to **CLI v0.1.0** (Python SDK **0.0.17**).
+These steps take a **0.0.x** setup (CLI through **v0.0.36**, Python SDK through **0.0.16**) to **0.1.x**. This snapshot is **CLI v0.1.0** (Python SDK **0.0.17**). You do not need to land on v0.0.36 first.
 
 See the [v0.1.0 release notes](https://github.com/PUDAP/puda/releases/tag/v0.1.0).
 
-Here's what's updated in v0.1.0:
+Here's what's updated in 0.1.x:
 
 - Agents get better machine context: `@command` allowlists, class descriptions on `puda machine list` / `ping`, a structured command catalog, and `@safety` so they see what a machine is, what it can do, and what needs confirmation.
 - Livestreams join the fleet. `puda livestream` registers feeds and attaches machines, so agents retrieve livestream context from PUDA instead of copy-pasted URLs.
@@ -16,11 +16,11 @@ Here's what's updated in v0.1.0:
 - Scaling support for up to **1,000,000** machines/edges: shared `MACHINE_STATE` / `MACHINE_COMMANDS` KV, ping/pong discovery, throttled heartbeat/position, 10s immediate timeouts, and single-node or three-node NATS.
 - Optional clock sync so timestamps from many hosts stay in order.
 
-Upgrade in this order: CLI, NATS, every edge, skills, livestreams, then clock sync. Do not mix a v0.1.0 CLI with a 0.0.16 edge, or the reverse: `puda machine commands` and protocol validate will fail.
+Upgrade in this order: CLI, NATS, every edge, skills, livestreams, then clock sync. Do not mix a 0.1.x CLI with a 0.0.16 edge, or the reverse: `puda machine commands` and protocol validate will fail.
 
 ## 1. Install the new CLI
 
-Install the CLI from the [v0.1.0 release](https://github.com/PUDAP/puda/releases/tag/v0.1.0), or run `puda update` if the CLI is already installed, and confirm the version:
+Install a 0.1.x CLI from [PUDA releases](https://github.com/PUDAP/puda/releases), or run `puda update` if the CLI is already installed, and confirm the version is 0.1.x:
 
 ```bash
 puda update
@@ -31,7 +31,7 @@ CLI machine commands now print JSON by default (`list`, `ping`, `state`, `comman
 
 `puda machine list` discovers live edges from ping/pong and reports `machine_id`, `description`, and `livestream_count`. `puda machine ping <machine_id>` probes specific IDs and includes `sdk_version`, `run_status`, and registered livestream URLs.
 
-v0.1.0 adds `puda livestream` for agents (`add`, `list`, `attach`, `detach`, `rm`). Agents register camera streams in the fleet registry instead of relying on pasted URLs.
+0.1.x adds `puda livestream` for agents (`add`, `list`, `attach`, `detach`, `rm`). Agents register camera streams in the fleet registry instead of relying on pasted URLs.
 
 Optional: `puda healthcheck` probes each configured NATS URL, cluster membership, and JetStream.
 
@@ -41,7 +41,7 @@ A protocol command named `wait` is handled by the CLI: it sleeps for `params.sec
 
 ## 2. Redeploy the NATS server
 
-JetStream stream and KV definitions changed in v0.1.0. Shared buckets `MACHINE_STATE` and `MACHINE_COMMANDS` replace the old per-machine buckets, and `LIVESTREAMS` is new. The 0.0.x hand-written Compose file is not enough. Redeploy from [`infra/nats`](https://github.com/PUDAP/puda/tree/main/infra/nats) rather than patching the old instance.
+JetStream stream and KV definitions changed in 0.1.x. Shared buckets `MACHINE_STATE` and `MACHINE_COMMANDS` replace the old per-machine buckets, and `LIVESTREAMS` is new. The 0.0.x hand-written Compose file is not enough. Redeploy from [`infra/nats`](https://github.com/PUDAP/puda/tree/main/infra/nats) rather than patching the old instance.
 
 Pick one layout from [NATS Server](./setup/nats-server):
 
@@ -73,7 +73,7 @@ Heartbeat is now published at most every **5s** and position at most every **3s*
 
 ### Mark remote commands with `@command`
 
-0.0.x advertised every public driver method. v0.1.0 advertises only methods decorated with `@command`. A driver with none of those methods fails at startup with `Update SDK to 0.0.17`.
+0.0.x advertised every public driver method. 0.1.x advertises only methods decorated with `@command`. A driver with none of those methods fails at startup with `Update SDK to 0.0.17`.
 
 ```python title="driver.py"
 from puda import command
@@ -128,7 +128,7 @@ The updated skills cover livestream, clock sync, and the special client-side pro
 
 0.0.x ran cameras as a standalone MediaMTX stack, separate from PUDA. You had to give the agent the URLs and machine context yourself.
 
-v0.1.0 keeps that stack and adds the `puda livestream` subcommand plus a fleet registry in NATS KV (`LIVESTREAMS`). You do not register streams by hand. After puda skills are updated, give the agent the camera source (USB `/dev/video*` path or `rtsp://` URL), livestream name, a short description, the MediaMTX **host** (MagicDNS, Tailscale IP, or the machine IP if there is no Tailscale), and the **machine IDs** that are using the feed. The skill starts MediaMTX and ffmpeg if they are not already running, then registers with `puda livestream add`.
+0.1.x keeps that stack and adds the `puda livestream` subcommand plus a fleet registry in NATS KV (`LIVESTREAMS`). You do not register streams by hand. After puda skills are updated, give the agent the camera source (USB `/dev/video*` path or `rtsp://` URL), livestream name, a short description, the MediaMTX **host** (MagicDNS, Tailscale IP, or the machine IP if there is no Tailscale), and the **machine IDs** that are using the feed. The skill starts MediaMTX and ffmpeg if they are not already running, then registers with `puda livestream add`.
 
 If MediaMTX is already running from 0.0.x, leave it up. The skill still registers the existing streams so `puda machine list` and `puda machine ping` can see them.
 
