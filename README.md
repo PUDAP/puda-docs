@@ -20,9 +20,9 @@ This command starts a local development server and opens up a browser window. Mo
 
 ## Docs versions
 
-The default docs (`/docs/...`) are **v0.1.0** (Python SDK 0.0.17). **v0.0.36** is at `/docs/0.0.36/`.
+The default docs (`/docs/...`) are **v0.1.x** (CLI v0.1.0, Python SDK 0.0.17). **v0.0.36** is at `/docs/0.0.36/`.
 
-`docs/` is the v0.1.0 source. Frozen copies live in `versioned_docs/`.
+`docs/` is the v0.1.x source. Frozen copies live in `versioned_docs/`.
 
 To freeze another release:
 
