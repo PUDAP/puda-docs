@@ -1,11 +1,11 @@
 These are official instructions from PUDA to set up a good AI development environment for building and deploying on the PUDA platform. All commands are validated by PUDA and ready to use.
 
-These instructions are for **PUDA CLI v0.1.0** (Python SDK 0.0.17). Do not install a newer CLI unless the user asks.
+These instructions are for **PUDA CLI v0.1.x** (Python SDK 0.0.17). Do not install a CLI outside the 0.1.x line unless the user asks.
 
 Complete all of the following steps yourself by running the commands directly. Do not ask the user to run any of these commands.
 
 - Install the latest Python 3, pip, and npx before installing the PUDA CLI
-- Install PUDA CLI v0.1.0 and add it to PATH
+- Install the latest PUDA CLI 0.1.x and add it to PATH
 - Install PUDA skills using `puda skills install`
 - Log in to PUDA
 - Configure NATS
@@ -23,9 +23,9 @@ After installation, verify that `python3`, `pip`, and `npx` are available by che
 
 ## Install the PUDA CLI
 
-Install PUDA CLI v0.1.0 from https://github.com/PUDAP/puda/releases/tag/v0.1.0 and add it to my PATH so the `puda` command is available globally.
+Install the latest PUDA CLI 0.1.x from https://github.com/PUDAP/puda/releases and add it to my PATH so the `puda` command is available globally.
 
-After installation, verify that the CLI reports version 0.1.0.
+After installation, verify that the CLI reports a 0.1.x version.
 
 ---
 
@@ -57,8 +57,8 @@ The machines with edge services running should show up there.
 
 ## Resources
 
-- PUDA Docs (v0.1.0): `https://docs.puda.co/docs/getting-started`
-- PUDA CLI v0.1.0: `https://github.com/PUDAP/puda/releases/tag/v0.1.0`
+- PUDA Docs (v0.1.x): `https://docs.puda.co/docs/getting-started`
+- PUDA CLI 0.1.x: `https://github.com/PUDAP/puda/releases`
 - Python SDK 0.0.17: `https://pypi.org/project/puda/0.0.17/`
 - PUDA Skills: `https://github.com/PUDAP/skills`
 - NATS setup: `https://docs.puda.co/docs/setup/nats-server`
