@@ -6,8 +6,6 @@ sidebar_position: 1.5
 
 These steps take a **0.0.x** setup (CLI through **v0.0.36**, Python SDK through **0.0.16**) to **0.1.x**. This snapshot is **CLI v0.1.2** (Python SDK **0.0.18**). You do not need to land on v0.0.36 first.
 
-Already on CLI v0.1.0 or v0.1.1? Skip to [Upgrading from v0.1.0 or v0.1.1](#upgrading-from-v010-or-v011).
-
 See the [v0.1.0 release notes](https://github.com/PUDAP/puda/releases/tag/v0.1.0).
 
 Here's what's updated in 0.1.x:
@@ -222,29 +220,3 @@ puda livestream list --machines <machine_id>
 `puda machine list` should show `description` and `livestream_count`. `puda machine info` should show `sdk_version` `0.0.18` or later, any registered livestream URLs, and the machine's `tlm_streams`. `puda machine commands` should list only `@command` methods.
 
 More driver detail: [Integrating a New Machine](./setup/integrating-a-new-machine). SDK notes: [Python SDK 0.0.18](https://pypi.org/project/puda/0.0.18/).
-
-## Upgrading from v0.1.0 or v0.1.1
-
-CLI v0.1.2 and SDK 0.0.18 need no NATS redeploy. Update the CLI and every edge:
-
-```bash
-puda update
-puda --version   # 0.1.2
-```
-
-On each edge, set `puda>=0.0.18` in `pyproject.toml`, then `uv lock && uv sync`, and move telemetry onto the driver as described in [Move telemetry and state to `@tlm_stream` and `@machine_state`](#move-telemetry-and-state-to-tlm_stream-and-machine_state).
-
-Breaking changes:
-
-- **Position is no longer published by default.** `puda.<machine_id>.tlm.pos` is gone. Declare position as a `@tlm_stream` on the driver (for example `name="pos"`, published to `puda.<machine_id>.tlm.stream.pos`), then update dashboards, loggers, and anything else subscribed to the old subject.
-- **`puda machine ping`** is renamed to `puda machine info`. `ping` still works as an alias.
-- **`puda machine watch`** takes full subjects as arguments. `--subjects`/`-s` and the hidden `--targets` alias are removed; `--machines`/`-m` stays but cannot be combined with subject arguments.
-
-```bash
-# before
-puda machine watch -m opentron -s tlm
-# after
-puda machine watch 'puda.opentron.tlm.>'
-```
-
-Quote subjects that contain `*` or `>` so the shell does not expand them. Heartbeats are hidden unless you pass `--include-heartbeat` or a subject names `tlm.heartbeat`.
