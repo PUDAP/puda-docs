@@ -29,7 +29,7 @@ puda --version
 
 CLI machine commands now print JSON by default (`list`, `ping`, `state`, `commands`). Pass `--human` for the old text output.
 
-`puda machine list` discovers live edges from ping/pong and reports `machine_id`, `description`, and `livestream_count`. `puda machine ping <machine_id>` probes specific IDs and includes `sdk_version`, `run_status`, and registered livestream URLs.
+`puda machine list` discovers live edges from ping/pong and reports `machine_id`, `description`, and `livestream_count`. `puda machine info <machine_id>` probes specific IDs and includes `sdk_version`, `run_status`, and registered livestream URLs.
 
 0.1.x adds `puda livestream` for agents (`add`, `list`, `attach`, `detach`, `rm`). Agents register camera streams in the fleet registry instead of relying on pasted URLs.
 
@@ -89,7 +89,7 @@ class Driver:
 
 Keep helpers private (`_name`). Inherited serial APIs and other undecorated public methods stay local.
 
-Put a one-sentence summary in the **class docstring**. `puda machine list` and `puda machine ping` show that first paragraph as `description`.
+Put a one-sentence summary in the **class docstring**. `puda machine list` and `puda machine info` show that first paragraph as `description`.
 
 ### Raise on failure
 
@@ -132,7 +132,7 @@ The updated skills cover livestream, clock sync, and the special client-side pro
 
 0.1.x keeps that stack and adds the `puda livestream` subcommand plus a fleet registry in NATS KV (`LIVESTREAMS`). You do not register streams by hand. After puda skills are updated, give the agent the camera source (USB `/dev/video*` path or `rtsp://` URL), livestream name, a short description, the MediaMTX **host** (MagicDNS, Tailscale IP, or the machine IP if there is no Tailscale), and the **machine IDs** that are using the feed. The skill starts MediaMTX and ffmpeg if they are not already running, then registers with `puda livestream add`.
 
-If MediaMTX is already running from 0.0.x, leave it up. The skill still registers the existing streams so `puda machine list` and `puda machine ping` can see them.
+If MediaMTX is already running from 0.0.x, leave it up. The skill still registers the existing streams so `puda machine list` and `puda machine info` can see them.
 
 See [Livestream](./setup/livestream).
 
@@ -158,11 +158,11 @@ Command and response payloads did not change, so keep the [PUDA Logger](./observ
 
 ```bash
 puda machine list
-puda machine ping <machine_id>
+puda machine info <machine_id>
 puda machine commands <machine_id>
 puda livestream list --machines <machine_id>
 ```
 
-`puda machine list` should show `description` and `livestream_count`. `puda machine ping` should show `sdk_version` `0.0.17` or later and any registered livestream URLs. `puda machine commands` should list only `@command` methods.
+`puda machine list` should show `description` and `livestream_count`. `puda machine info` should show `sdk_version` `0.0.17` or later and any registered livestream URLs. `puda machine commands` should list only `@command` methods.
 
 More driver detail: [Integrating a New Machine](./setup/integrating-a-new-machine). SDK notes: [Python SDK 0.0.17](https://pypi.org/project/puda/0.0.17/).

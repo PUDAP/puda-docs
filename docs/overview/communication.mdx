@@ -39,7 +39,7 @@ Telemetry uses core NATS without JetStream persistence.
 | Subject | Description |
 | --- | --- |
 | `puda.opentron.tlm.heartbeat` | Timestamp-only heartbeat, published every second. |
-| `puda.opentron.tlm.pos` | Real-time machine coordinates. |
+| `puda.opentron.tlm.stream.pos` | Real-time machine coordinates. |
 | `puda.opentron.tlm.health` | System vitals such as CPU, memory, and temperature. |
 | `puda.opentron.tlm.status` | Machine state and `run_id`, backed by the key-value store. |
 
@@ -70,7 +70,7 @@ Events use JetStream.
 NATS allows an unlimited number of listeners or loggers to subscribe to the same message stream without changing the machine integration. The [PUDA CLI](./puda-cli) exposes this through `puda machine watch`.
 
 ```bash
-puda machine watch puda.opentron.tlm.>
+puda machine watch 'puda.opentron.tlm.>'
 ```
 
 | Pattern | Use case |

@@ -46,7 +46,7 @@ The update response is the confirmation that the pull succeeded. The edge does n
 Watch traffic while the edge reconnects:
 
 ```bash
-puda machine watch -m <machine_id> --subjects tlm.heartbeat
+puda machine watch puda.<machine_id>.tlm.heartbeat
 ```
 
 Then confirm the machine appears again:

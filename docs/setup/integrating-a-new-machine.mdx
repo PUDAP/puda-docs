@@ -10,11 +10,7 @@ Each machine in PUDA runs an edge service. The edge service wraps the machine's 
 PUDA edge services currently support Python only, because it is the most commonly used language in the lab automation ecosystem. If you prefer to use another language, [contact us](https://www.puda.co/about) with your needs and we can create a PUDA SDK for it.
 :::
 
-Use the [edge-python-template](https://github.com/PUDAP/edge-python-template) template to create a new repository. Name it `puda-<machine_id>-edge`, replacing `<machine_id>` with your machine ID. The template depends on the `puda` Python SDK from PyPI. Require **0.0.17 or later** for this CLI release:
-
-```bash
-pip install "puda>=0.0.17"
-```
+Use the [edge-python-template](https://github.com/PUDAP/edge-python-template) template to create a new repository. Name it `puda-<machine_id>-edge`, replacing `<machine_id>` with your machine ID. The template depends on the `puda` Python SDK from PyPI; uv installs it with the rest of the edge dependencies.
 
 ```bash
 git clone https://github.com/<your-org>/puda-<machine_id>-edge.git
@@ -66,7 +62,7 @@ Each subdirectory is a standalone edge service from the [edge-python-template](h
 
 The main integration point is the `driver.py` class. This class should be a thin wrapper around the hardware code for your machine to make it more AI ready. If you already have example code for each command, an AI coding agent can usually turn that into a quick `driver.py` for you.
 
-Only methods marked `@command` are advertised and callable. Undecorated public methods stay local to the driver. Drivers with no `@command` methods fail until the edge uses Python SDK 0.0.17 or later. Do not use types JSON cannot represent in `@command` parameters; see [JSON primitives](#json-primitives).
+Only methods marked `@command` are advertised and callable. Undecorated public methods stay local to the driver. Drivers with no `@command` methods fail at startup. Do not use types JSON cannot represent in `@command` parameters; see [JSON primitives](#json-primitives).
 
 ```bash
 puda machine commands <machine_id>
@@ -78,7 +74,7 @@ Keep every machine action you want an AI agent to discover, call, and orchestrat
 
 This means the driver method names, docstrings, parameters, and return annotations become part of the command interface that users and agents see. Optional `@safety` metadata is published in the command catalog so agents can prompt the operator before execution; it does not change dispatch. See [`@safety` decorator](#safety-decorator) for an example.
 
-Put a one-sentence summary on the **Driver class docstring**. PUDA advertises the first paragraph on `puda machine list` and `puda machine ping` so agents can tell what the machine does without fetching the command catalog.
+Put a one-sentence summary on the **Driver class docstring**. PUDA advertises the first paragraph on `puda machine list` and `puda machine info` so agents can tell what the machine does without fetching the command catalog.
 
 ```python title="driver.py"
 class Driver:
@@ -303,13 +299,31 @@ driver = Driver(
 )
 ```
 
-The telemetry handler should publish at least heartbeat, optional position, health, and state.
+Mark driver methods with `@tlm_stream(interval=...)` to publish telemetry streams such as position, weight, or a control signal. `EdgeRunner` calls each one every `interval` seconds and publishes the returned dict to `puda.<machine_id>.tlm.stream.<name>`. The stream name defaults to the method name, and the first paragraph of the docstring is advertised as its description. Return `None` to skip a sample. `puda machine info <machine_id>` lists every stream with its subject and interval.
+
+```python title="driver.py"
+from puda import command, tlm_stream
+
+class Driver:
+    @command
+    @tlm_stream(interval=3.0, name="pos")
+    def get_position(self) -> dict[str, float]:
+        """Current cartesian position."""
+        return {"x": self._x, "y": self._y, "z": self._z}
+
+    @tlm_stream(interval=0.25)
+    def weight(self) -> dict | None:
+        """Mass in grams."""
+        return {"g": self._latest_mass}
+```
+
+For data that arrives as events from a driver thread rather than on a fixed schedule, call `edge_nats_client.publish_tlm_stream_threadsafe("<name>", data)`.
+
+The telemetry handler runs once per second and should publish at least heartbeat and health.
 
 ```python title="main.py"
 async def telemetry_handler():
     await edge_nats_client.publish_heartbeat()
-
-    await edge_nats_client.publish_position(driver.get_position())
 
     await edge_nats_client.publish_health({
         "connected": driver.is_connected(),
@@ -334,6 +348,6 @@ runner = EdgeRunner(
 )
 ```
 
-Adapt the field names to your machine. For a robot arm, position might include joints and tool pose. For a pump, position might be plunger position, valve position, and current flow rate. For a camera, it might be stage position, focus, exposure, and acquisition state. The important rule is that telemetry should be JSON-serializable, stable over time, and useful to agents, dashboards, and loggers watching subjects such as `puda.<machine_id>.tlm.pos`, `puda.<machine_id>.tlm.health`, and `puda.<machine_id>.tlm.status`.
+Adapt the field names to your machine. For a robot arm, position might include joints and tool pose. For a pump, position might be plunger position, valve position, and current flow rate. For a camera, it might be stage position, focus, exposure, and acquisition state. The important rule is that telemetry should be JSON-serializable, stable over time, and useful to agents, dashboards, and loggers watching subjects such as `puda.<machine_id>.tlm.stream.pos`, `puda.<machine_id>.tlm.stream.>` (every stream), and `puda.<machine_id>.tlm.health`.
 
 Once this is done, you can [install the PUDA CLI and skills](./puda-cli-and-skills) in your AI agent so it can command your PUDA-integrated machines.
