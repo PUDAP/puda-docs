@@ -112,6 +112,7 @@ When writing the driver class:
 - Annotate `@command` parameters with [JSON primitives](#json-primitives). Protocol validate type-checks those annotations on commands the protocol uses. Unannotated parameters skip the type check. Types JSON cannot represent still fail validate when that command is used.
 - Avoid exposing low-level helper methods as `@command` methods. Use private methods for internal helpers.
 - Raise an exception when a command fails. Returning `False` is still a successful PUDA response.
+- Publish live readings with [`@tlm_stream`](#telemetry-streams) and machine-level fields with [`@machine_state`](#machine-state). Keep `@machine_state` to cached values.
 - Lifecycle methods are optional: `shutdown` (called before the edge stops), `home` (triggered by `puda machine home`), and `reset` (`puda machine reset` always clears the run first).
 
 These are standard good programming practices. In PUDA, they also become useful context for AI agents because the command names, docstrings, types, and errors describe what the machine can do and how failures should be interpreted.
@@ -204,7 +205,7 @@ When a hardware operation fails, include the command, target values, and hardwar
 
 ## `@safety` decorator
 
-Attach `@safety` to a `@command` method to publish advisory context in the command catalog. It does not block edge dispatch. `@safety` without `@command` is ignored. Use [JSON primitives](#json-primitives) for `@safety` parameters.
+Attach `@safety` to a `@command` method to publish advisory context in the command catalog. It does not block edge dispatch, so enforce hard preconditions in the method body by raising, for example `if not self._homed: raise RuntimeError("Machine is not homed; run home first")`. `@safety` without `@command` is ignored. Use [JSON primitives](#json-primitives) for `@safety` parameters.
 
 All five fields are keyword-only:
 
@@ -257,7 +258,7 @@ The agent should run the vision analyse skill, confirm the path is clear, then c
 
 ## Configure the edge service
 
-After the driver commands work, edit `main.py` so the edge service loads the machine-specific environment variables, passes them into the driver, and publishes useful telemetry.
+After the driver commands work, edit `main.py` so the edge service loads the machine-specific environment variables, and passes them into the driver.
 
 Keep `MACHINE_ID` and `NATS_SERVERS` in `.env`, then add the variables your hardware needs:
 
@@ -299,53 +300,59 @@ driver = Driver(
 )
 ```
 
-Mark driver methods with `@tlm_stream(interval=...)` to publish telemetry streams such as position, weight, or a control signal. `EdgeRunner` calls each one every `interval` seconds and publishes the returned dict to `puda.<machine_id>.tlm.stream.<name>`. The stream name defaults to the method name, and the first paragraph of the docstring is advertised as its description. Return `None` to skip a sample. `puda machine info <machine_id>` lists every stream with its subject and interval.
+## Telemetry streams
+
+Mark driver methods with `@tlm_stream(interval=...)` to publish telemetry streams such as position, weight, or a control signal. `EdgeRunner` calls each one every `interval` seconds and publishes the returned dict to `puda.<machine_id>.tlm.stream.<name>`. The stream name defaults to the method name, and the first paragraph of the docstring is advertised as its description. `puda machine info <machine_id>` lists every stream with its subject and interval.
 
 ```python title="driver.py"
-from puda import command, tlm_stream
+from puda import tlm_stream
 
 class Driver:
-    @command
-    @tlm_stream(interval=3.0, name="pos")
+    @tlm_stream(interval=3.0, name="pos")  # puda.<machine_id>.tlm.stream.pos
     def get_position(self) -> dict[str, float]:
         """Current cartesian position."""
-        return {"x": self._x, "y": self._y, "z": self._z}
+        self._position = self._hardware.read_position()
+        return self._position
 
-    @tlm_stream(interval=0.25)
+    @tlm_stream(interval=0.25)  # puda.<machine_id>.tlm.stream.weight
     def weight(self) -> dict | None:
         """Mass in grams."""
         return {"g": self._latest_mass}
 ```
 
+How stream methods run:
+
+- Each stream is called in a separate worker thread, not on the event loop, so reading from the device here is fine.
+- Streams run concurrently with commands, which also run in worker threads. A stream can be called while a command is in progress. How the driver shares a connection between them depends on the device protocol.
+- Return `None` to skip a sample. Exceptions are logged and the stream keeps running.
+- A stream does not need to be a `@command`. Add `@command` only if agents should also be able to request the value on demand.
+- Cache the latest reading on the driver, such as `self._position`, so the [`@machine_state`](#machine-state) method can include it without touching the device.
+
 For data that arrives as events from a driver thread rather than on a fixed schedule, call `edge_nats_client.publish_tlm_stream_threadsafe("<name>", data)`.
 
-The telemetry handler runs once per second and should publish at least heartbeat and health.
+## Machine state
+
+Mark one driver method with `@machine_state` to add machine-level fields to every `MACHINE_STATE` update. Only one method may be marked, and its name does not matter. PUDA already sets `state`, `run_id`, and `timestamp`, so return only what is specific to your machine and do not reuse those keys.
+
+```python title="driver.py"
+from puda import machine_state
+
+class Driver:
+    @machine_state
+    def snapshot(self) -> dict:
+        return {"homed": self._homed, "position": self._position}
+```
+
+The `@machine_state` method is not polled. PUDA calls it whenever machine state changes: at startup and reconnect, when a queued command starts and ends, after immediate commands such as pause or reset, on errors, and at shutdown. Each call is one write to the `MACHINE_STATE` key-value store, so an idle machine's state is written once.
+
+It runs on the edge's event loop, not in a worker thread. Return values the driver already keeps in memory, updated by your commands. A device read here, such as a serial query, blocks command handling and telemetry until it finishes. Values that can change outside a command, like a limit switch or an operator homing from the machine's panel, belong in a `@tlm_stream` instead.
+
+## Heartbeat and host health
+
+`EdgeRunner` publishes the heartbeat and host health (CPU, memory and temperature on `tlm.health`, every 5 seconds) on its own, so `main.py` only wires things together:
 
 ```python title="main.py"
-async def telemetry_handler():
-    await edge_nats_client.publish_heartbeat()
-
-    await edge_nats_client.publish_health({
-        "connected": driver.is_connected(),
-        "temperature_c": driver.temperature_c(),
-    })
-
-
-def state_handler():
-    return {
-        "state": driver.state,
-        "run_id": driver.active_run_id,
-        "homed": driver.is_homed(),
-        "busy": driver.is_busy(),
-    }
-
-
-runner = EdgeRunner(
-    nats_client=edge_nats_client,
-    machine_driver=driver,
-    telemetry_handler=telemetry_handler,
-    state_handler=state_handler,
-)
+runner = EdgeRunner(nats_client=edge_nats_client, machine_driver=driver)
 ```
 
 Adapt the field names to your machine. For a robot arm, position might include joints and tool pose. For a pump, position might be plunger position, valve position, and current flow rate. For a camera, it might be stage position, focus, exposure, and acquisition state. The important rule is that telemetry should be JSON-serializable, stable over time, and useful to agents, dashboards, and loggers watching subjects such as `puda.<machine_id>.tlm.stream.pos`, `puda.<machine_id>.tlm.stream.>` (every stream), and `puda.<machine_id>.tlm.health`.
