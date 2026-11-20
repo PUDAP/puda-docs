@@ -1,3 +1,5 @@
+> **Moved:** the docs.puda.co source now lives in [`PUDAP/puda` → `apps/docs`](https://github.com/PUDAP/puda/tree/main/apps/docs). This repository is archived.
+
 # puda-docs
 
 View the docs at [docs.puda.co](https://docs.puda.co).
